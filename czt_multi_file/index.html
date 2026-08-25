@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <link rel="stylesheet" href="styles.css">
+   <title>Custom Zenith Tower</title>
+   <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+   <script src="sending&death.js"></script>
+   <script src="star.js"></script>
+   <script src="player.js"></script>
+   <script src="fake_player.js"></script>
+   <script src="tile&piece.js"></script>
+   <script src="mods.js"></script>
+</head>
+<body onkeydown="input_pressed(event)" onkeyup="input_depressed(event)">
+   <div id="results" class="column">
+      <h1 id="altitude-show">ALTITUDE</h1>
+      <div>
+         <table id="stats-1">
+            
+         </table>
+         <table id="stats-2">
+
+         </table>
+      </div>
+      <p>CLICK ANYWHERE TO CONTINUE</p>
+   </div>
+   <dialog id="settings" class="border-outset">
+      <div>
+         <h3>HANDLING</h3>
+         <div>DAS: <input type="text" id="DAS-input" class="border-inset"></div>
+         <div>ARR: <input type="text" id="ARR-input" class="border-inset"></div>
+         <div>SDF: <input type="text" id="SDF-input" class="border-inset"></div>
+      </div>
+      <hr>
+      <div>
+         <h3>CONTROLS</h3>
+         <div>MOVE LEFT: <div id="left-input" class="control-input border-inset"></div></div>
+         <div>MOVE RIGHT: <div id="right-input" class="control-input border-inset"></div></div>
+         <div>SOFT DROP: <div id="soft_drop-input" class="control-input border-inset"></div></div>
+         <div>HARD DROP: <div id="hard_drop-input" class="control-input border-inset"></div></div>
+         <div>ROTATE CLOCKWISE: <div id="rot_cw-input" class="control-input border-inset"></div></div>
+         <div>ROTATE 180 DEGREES: <div id="rot_180-input" class="control-input border-inset"></div></div>
+         <div>ROTATE COUNTERCLOCKWISE: <div id="rot_ccw-input" class="control-input border-inset"></div></div>
+         <div>HOLD: <div id="hold-input" class="control-input border-inset"></div></div>
+      </div>
+      <hr>
+      <div id="buttons">
+         <button class="border-outset" onclick="hide_settings(true)">SAVE</button>
+         <button class="border-outset" onclick="hide_settings(false)">CANCEL</button>
+      </div>
+   </dialog>
+   <div id="background">
+      <div id="f1"></div>
+      <div id="f2"></div>
+      <div id="f3"></div>
+      <div id="f4"></div>
+      <div id="f5"></div>
+      <div id="f6"></div>
+      <div id="f7"></div>
+      <div id="f8"></div>
+      <div id="f9"></div>
+      <div id="f10"></div>
+   </div>
+   <div id="menu">
+      <div id="menu-left" class="column">
+         <button class="button settings-button border-outset" onclick="show_settings()">SETTINGS</button>
+      </div>
+      <div id="menu-middle" class="column">
+         <h1>TITLE</h1>
+         <div id="mod-menu" class="column border-outset">
+            <h2>CURRENT MODS</h2>
+            <div class="mod-area border-inset" id="selected-mods">
+               <p>NO MODS SELECTED</p>
+            </div>
+            <button class="button border-outset" id="play-button" onclick="begin()">PLAY</button>
+            <h2>AVAILABLE MODS</h2>
+            <div class="mod-area border-inset" id="available-mods">
+               
+            </div>
+         </div>
+      </div>
+      <div id="menu-right" class="column">
+
+      </div>
+   </div>
+   <div id="flash"></div>
+   <div id="board"></div>
+   <script src="other.js"></script>
+   <script src="modblocks.js"></script>
+</body>
+</html>
