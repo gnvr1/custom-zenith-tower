@@ -3,7 +3,7 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>Document</title>
+   <title>Custom Zenith Tower</title>
    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
    <style>
       *{
@@ -32,7 +32,7 @@
          font-size: 1.6em;
       }
       #board{
-         margin-top: calc(55vh - 250px);
+         margin-top: calc(55vh - 310px);
          display: none;
          text-shadow: 0 0 5px rgba(0, 0, 0, 1);
          transition: scale 0.5s 0.7s ease-in;
@@ -325,6 +325,29 @@
          text-align: center;
          margin-top: 50px;
       }
+      .modblock{
+         cursor: pointer;
+         font-weight: bold;
+         text-align: center;
+         padding: 5px;
+         border: 3px solid black;
+         transition: scale 0.2s ease-out, transform 0.3s ease-out;
+         position: relative;
+         margin: 3px;
+      }
+      .modblock:hover{
+         scale: 1.05;
+      }
+      .reverser{
+         opacity: 0.5;
+         position: absolute;
+         top: 0px;
+         left: calc(50%-10px);
+         font-size: 30px;
+      }
+      .reverser:hover{
+         opacity: 1;
+      }
    </style>
 </head>
 <body onkeydown="input_pressed(event)" onkeyup="input_depressed(event)">
@@ -385,12 +408,12 @@
          <h1>TITLE</h1>
          <div id="mod-menu" class="column border-outset">
             <h2>CURRENT MODS</h2>
-            <div class="mod-area border-inset">
+            <div class="mod-area border-inset" id="selected-mods">
                <p>NO MODS SELECTED</p>
             </div>
             <button class="button border-outset" id="play-button" onclick="begin()">PLAY</button>
             <h2>AVAILABLE MODS</h2>
-            <div class="mod-area border-inset">
+            <div class="mod-area border-inset" id="available-mods">
                
             </div>
          </div>
@@ -475,7 +498,6 @@
       function hide_settings(save){
          if(save){
             Object.keys(settings.handling).forEach(key => {
-               console.log(parseFloat($("#"+key+"-input").val()))
                settings.handling[key] = Number.isNaN(parseFloat($("#"+key+"-input").val()))? 1 : parseFloat($("#"+key+"-input").val())
             })
             Object.keys(settings.controls).forEach(key => {
@@ -485,7 +507,7 @@
          document.getElementsByTagName("dialog")[0].close()
       }
       function send_attacks(sender, amount){
-         if(amount > 6){
+         if(amount > 7){
             send_attacks(sender, Math.floor(amount/2))
             send_attacks(sender, Math.ceil(amount/2))
          }
@@ -498,12 +520,12 @@
                if(climber instanceof player){
                   weight += climber.ruleset.base_targeting_factor
                   weight -= Math.min(1, climber.targeting_grace / climber.ruleset.targeting_grace_effective_max) * climber.ruleset.targeting_grace_max_targeting_reduction
+                  weight -= Math.min(climber.ruleset.garbage_line_protection_max_stacks, climber.board.filter(row => row.find(cell => cell.type == 2)).length) * climber.ruleset.garbage_line_protection_reduction_per_line
                   let flag = false
                   for(let i = climber.current_board_dimensions.y + 3; i > climber.current_board_dimensions.y - 3; i--){
                      if(climber.board[i].filter(cell => cell.type != 0).length > 0){flag = true; break}
                   }
                   if(flag) weight -= climber.ruleset.targeting_reduction_in_danger
-                  //weight *= 1 + 0.05 * (climber.climb_speed - 1)
                }
                else if(climber instanceof fake_player){
                   weight += 3
@@ -512,15 +534,13 @@
                   if(climber.time > 420) weight += 1
                   weight -= Math.min(1, climber.targeting_grace / 12) * 3
                   if(climber.board > 18) weight -= 1.5
-                  //weight *= 1 + 0.05 * (climber.csp - 1)
                }
                if(weight < 0.001) weight = 0.001   
                weights.push(weight)
             })
             let index = tower.findIndex(player => player === sender)
             weights[index] = 0
-            //for(let i = -5; i <= 5; i++) if(index + i >= 0) {weights[index+i] *= 4}
-            weights.forEach((p, p_index) => {if(Math.abs(index - p_index) > 10){weights[p_index] *= 1/Math.pow(1.25, Math.abs(index - p_index)-10)}})
+            weights.forEach((p, p_index) => {if(Math.abs(index - p_index) > 10 && Math.abs(sender.altitude - tower[p_index].altitude) > 15){weights[p_index] *= Math.max(1/Math.pow(1.2, Math.abs(index - p_index)-6), 1/Math.pow(1.1, Math.abs(sender.altitude - tower[p_index].altitude)-15))}})
             let targeting_value = Math.random() * weights.reduce((sum, weight) => sum += weight, 0)
             let temp = targeting_value
             let final_index = -1
@@ -534,14 +554,13 @@
             let great_altitude
             great_altitude = Math.max(Math.min(sender.altitude,3500), Math.min(target.altitude-1000,2000))
             if(target.altitude > great_altitude) amount *= 1 + 0.004 * (target.altitude - great_altitude) * (target.altitude - great_altitude) / (target.altitude + great_altitude)
-            if(target instanceof player && amount != temp){console.log("increased by", amount - temp, "by altitude penalty", (amount - temp > 4)? weights : undefined, (amount - temp > 4)? final_index : undefined); temp = amount}
             if(target instanceof player){
-               console.log("received from skill level", sender.skill_score, sender.apm, "at alt", sender.altitude, amount)
                for(let i in target.garbage_received_boosts) amount += target.garbage_received_boosts[i]
                for(let i in target.garbage_received_mults) amount *= target.garbage_received_mults[i]
                if(target.targeting_grace > target.ruleset.targeting_grace_garbage_mult_threshold) amount *= 1 - ((target.targeting_grace - target.ruleset.targeting_grace_garbage_mult_threshold) * target.ruleset.targeting_grace_garbage_mult_per_point)
                if(Math.random() < amount - parseInt(amount)) amount++
                amount = parseInt(amount)
+               //console.log("received from skill level", sender.skill_score, sender.apm, "at alt", sender.altitude, amount, "with weight", weights[final_index], 1/Math.pow(1.2, Math.abs(index - final_index)-6), 1/Math.pow(1.1, Math.abs(sender.altitude - target.altitude)-15))
                if(amount >= target.ruleset.windup_threshold) target.windups.push({chunks: amount, time: 0, chunk_amount: 0})
                else if(amount >= 1) target.garbage_queue.push({size: amount, time_in_queue: 0})
                target.targeting_grace = Math.min(target.targeting_grace + Math.floor(amount * target.ruleset.targeting_grace_mult), target.ruleset.targeting_grace_max)
@@ -569,6 +588,7 @@
          if(corpse.last_attacker instanceof player){
             corpse.last_attacker.bonus_altitude += corpse.last_attacker.ruleset.KO_altitude_gain * corpse.last_attacker.climb_speed / 4 * corpse.last_attacker.ruleset.altitude_mult
             corpse.last_attacker.kos++
+            corpse.last_attacker.add_top_text("Elimination!", 1)
          }
          if(corpse.last_attacker instanceof fake_player) corpse.last_attacker.altitude += 15 * corpse.last_attacker.csp / 4
          if(corpse instanceof fake_player && !tower.find(player => player.skill_score == corpse.skill_score)) {
@@ -580,6 +600,7 @@
             tower.push(revived)
          }
          if(corpse instanceof player){
+            corpse.render($("#board"))
             console.log(corpse)
             $("#board").css("scale",0)
             $("#results").css("display","flex")
@@ -595,13 +616,13 @@
             ]
             $("#results table").empty()
             stats_to_show.forEach((stat,index) => {
-               console.log("#stats-" + ((index < 0.5 * stats_to_show.length)? 1 : 2))
                $("#stats-" + ((index < 0.5 * stats_to_show.length)? 1 : 2)).append(`<tr><td>${stat.name}</td><td>${stat.value}</td></tr>`)
             })
             window.setTimeout(() => { 
                $("#results").css("top",0).on("click",() => {
                   $("#results").css("top", "-100vh").off("click")
                   $("#background").css("display","none")
+                  rerender_mods()
                   $("#menu").css("display","flex")
                   $("body").css("overflow","auto")
                   $("#board").css("display","none")
@@ -612,12 +633,14 @@
       class tile {
          type = 0
          subtype = 0
-         constructor(type, subtype = 0){this.type = type; this.subtype = subtype}
+         opacity = 1
+         constructor(type, subtype = 0, opacity = 1){this.type = type; this.subtype = subtype; this.opacity = opacity}
          tile_render_info(){
             if(this.type == 0) return "none"
             if(this.type == 1) return piece_colors[this.subtype-1]
             if(this.type == 2) return "darkgray"
             if(this.type == 3) return "#555"
+            if(this.type == 4) return "indigo"
          }
       }
       const tier_mults = [0,1,3,10]
@@ -700,19 +723,22 @@
       }
       class ruleset {
          board_dimensions = new vector(10,20)
+         board_dimension_mults = new vector(1,1)
          attack_table = {
             normal: [0,0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
             spin: [0,0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
          }
          queue_size = 5
          hold_cooldown = 1
-         starting_board = []
          garbage_messiness = 0.03
+         garbage_messiness_per_floor = 0.03
          garbage_well_amount = 1
          garbage_entering_time = 0.08333
+         instant_garbage_entry = false
          garbage_cap = 8
          absolute_garbage_cap = undefined
          garbage_favour = 30
+         garbage_favour_per_floor = -3
          garbage_gathering = true
          garbage_gathering_max_messiness = 0.15
          garbage_entry_delay = [5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5]
@@ -739,6 +765,7 @@
          KO_altitude_gain = 15
          passive_altitude_gain = 1
          climb_xp_gain_mult = 1
+         climb_xp_gain_methods = {clear: true,block: true,send: true}
          climb_xp_loss_factor = 3
          base_targeting_factor = 3
          targeting_grace_mult = 1
@@ -751,14 +778,14 @@
          targeting_grace_release_time = [4.8, 3.9, 2.1, 1.4, 1.3, 0.9, 0.6, 0.4, 0.3, 0.2]
          targeting_reduction_in_danger = 1.5
          fatigue = [
-            {time: 180, effect: (player) => {player.ruleset.base_targeting_factor++}},
-            {time: 300, effect: (player) => {player.ruleset.base_targeting_factor++}},
-            {time: 420, effect: (player) => {player.ruleset.base_targeting_factor++}},
-            {time: 480, effect: (player) => {player.manual_delayed_injection(2, 0.8, true)}},
-            {time: 540, effect: (player) => {player.garbage_received_mults.fatigue = 1.25}},
-            {time: 600, effect: (player) => {player.manual_delayed_injection(3, 0.8, true)}},
-            {time: 660, effect: (player) => {player.garbage_received_mults.fatigue = 1.5}},
-            {time: 720, effect: (player) => {player.manual_delayed_injection(5, 0.8, true)}},
+            {time: 180, effect: (player) => {player.ruleset.base_targeting_factor++}, description: ""},
+            {time: 300, effect: (player) => {player.ruleset.base_targeting_factor++}, description: ""},
+            {time: 420, effect: (player) => {player.ruleset.base_targeting_factor++}, description: ""},
+            {time: 480, effect: (player) => {player.manual_delayed_injection(2, 0.8, "perma")}, description: "FATIGUE SETS IN… +2 PERMANENT LINES"},
+            {time: 540, effect: (player) => {player.garbage_received_mults.fatigue += 0.25}, description: "YOUR BODY GROWS WEAK… receive 25% more garbage"},
+            {time: 600, effect: (player) => {player.manual_delayed_injection(3, 0.8, "perma")}, description: "ALL SENSES BLUR TOGETHER… +3 PERMANENT LINES"},
+            {time: 660, effect: (player) => {player.garbage_received_mults.fatigue += 0.25}, description: "YOUR CONSCIOUSNESS FADES… receive 25% more garbage"},
+            {time: 720, effect: (player) => {player.manual_delayed_injection(5, 0.8, "perma")}, description: "THIS IS THE END. +5 PERMANENT LINES"},
          ]
          available_pieces = [
             new piece("I",[new vector(-2,0),new vector(-1,0),new vector(0,0),new vector(1,0)],1,false,kick_tables.SRSpI),
@@ -772,6 +799,7 @@
          ]
          bag = ["I","J","L","O","S","T","Z"]
          bag_refresh_at = 0
+         ghost_piece = true
          combo_multiplier = 0.25
          btb_chaining_thresholds = [1]
          btb_charging_starting_btb = 4
@@ -784,11 +812,18 @@
          cc_btb = 0
          lc_are = 0
          rounding = "rng"
-         garbage_line_protection = false
+         garbage_line_protection_max_stacks = 0
+         garbage_line_protection_reduction_per_line = 0.5
          danger_protection = true
          minimum_action_text_opacity = 0
+         action_text_colour = "white"
          floor_tresholds = [undefined,0,50,150,300,450,650,850,1100,1350,1650,Infinity]
-         floor_barriers = false
+         shorter_region_tresholds = [2000,2400,2800,3200,3600,4000]
+         other_region_interval = 500
+         windup_power_first_increase_altitude = 4000
+         windup_power_increase_interval = 500
+         windup_power_increase_amount = 1
+         floor_barriers = true
          barrier_skip_actions = ["line_clear", "garbage_send", "garbage_block"]
          floor_cross_altitude = 3
          windup_threshold = 8
@@ -799,6 +834,7 @@
          current_board_dimensions = this.ruleset.board_dimensions.scale(1)
          board = []
          controlled_piece = new piece("S",[new vector(-1,0),new vector(0,0),new vector(0,1),new vector(1,1)],5)
+         piece_placed = false
          piece_position = new vector(4,21)
          piece_partial_movement = 0
          piece_rotation = 0
@@ -807,11 +843,11 @@
          piece_spinnin = 0
          piece_hyperkick = true
          ghost_piece_offset = 0
-         hold = new piece("I",[new vector(-2,0),new vector(-1,0),new vector(0,0),new vector(1,0)],1,false,kick_tables.SRSpI)
+         hold = undefined
          hold_cooldown = (this.ruleset.hold_cooldown >= 0)? 0 : -1
          lock_delay = this.ruleset.lock_delay
          lock_delay_resets = this.ruleset.lock_delay_resets
-         queue = [this.get_piece("I"),this.get_piece("J"),this.get_piece("O"),this.get_piece("L"),this.get_piece("Z"),this.get_piece("T")]
+         queue = []
          bag = [...this.ruleset.bag]
          garbage_queue = []
          windups = []
@@ -824,6 +860,8 @@
          last_action_text_update = 0
          pc_text = ""
          last_pc_text_update = 0
+         top_text = []
+         last_top_text_update = 0
          climb_speed = 1
          climb_xp = 0
          climb_xp_lock_remaining = 0
@@ -831,14 +869,16 @@
          lock_time = 5
          bonus_altitude = 0
          floor = 1
+         current_region_threshold = this.ruleset.shorter_region_tresholds.shift()
          garbage_received_boosts = {}
-         garbage_received_mults = {destruction: 2}
+         garbage_received_mults = {fatigue: 1}
          targeting_grace = 0
          targeting_grace_last_released = Date.now()
          clear_text = ""
          combo = -1
          btb = -1
          powah = 0
+         separate_garbage = [0,0]
          cancelling_sickness = 0
          cancelling_sickness_last_sz_spins = []
          cancelling_sickness_last_reduced = Date.now()
@@ -847,9 +887,13 @@
          cancelling_sickness_i5_received = false
          time_of_last_update = Date.now()
          last_update_keys_pressed = []
+         windup_power_increase_altitude = this.ruleset.windup_power_first_increase_altitude
          clutch = false
+         mods = []
+         base_fatigue_removed = false
          last_attacker = undefined
          stars = []
+         clear_whites = []
          altitude = 0
          pieces_placed = 0
          attacks_created = 0
@@ -865,6 +909,33 @@
          highest_climb_speed = 1
          total_lines_cleared = 0
          all_clears = 0
+         recalculate_board_dimensions(){
+            let target_board_dimensions = new vector(Math.max(4, this.ruleset.board_dimensions.x * this.ruleset.board_dimension_mults.x), Math.max(4, this.ruleset.board_dimensions.y * this.ruleset.board_dimension_mults.y))
+            while(this.current_board_dimensions.x != target_board_dimensions.x){
+               if(this.current_board_dimensions.x < target_board_dimensions.x){
+                  if(this.current_board_dimensions.x % 2 == 0) this.board.forEach(row => row.unshift(new tile((row.find(cell => cell.type == 2))? 2 : 0)))
+                  else this.board.forEach(row => row.push(new tile((row.find(cell => cell.type == 2))? 2 : 0)))
+                  this.current_board_dimensions.x++
+               }
+               else{
+                  if(this.current_board_dimensions.x % 2 == 1) this.board.forEach(row => row.shift())
+                  else this.board.forEach(row => row.pop())
+                  this.current_board_dimensions.x--
+               }
+            }
+            while(this.current_board_dimensions.y != target_board_dimensions.y){
+               if(this.current_board_dimensions.y < target_board_dimensions.y){
+                  let new_row = []
+                  for(let i = 0; i < this.current_board_dimensions.x; i++) new_row.push(new tile(0))
+                  this.board.push(new_row)
+                  this.current_board_dimensions.y++
+               }
+               else{
+                  this.board.pop()
+                  this.current_board_dimensions.y--
+               }
+            }
+         }
          reset_board(){
             this.board = []
             for(let i = 0; i < this.current_board_dimensions.y + 20; i++){
@@ -878,6 +949,8 @@
             let scalar = 20 / this.current_board_dimensions.y
             
             div.addClass("column").empty()
+            let top_text = tag("auto","2em").css("margin-bottom", 10).addClass("big")
+            if(this.top_text.length > 0) top_text.html(this.top_text[0].text).css("opacity", 1 - (Date.now() - this.last_top_text_update - this.top_text[0].time * 1000) / 400).css("color","white")
             let top = tag().css("align-items","stretch").css("scale", Math.min(this.current_board_dimensions.y / 6, 1))
             let left = tag(other_mino_size*6,"default").addClass("column").css("align-items","flex-end").css("justify-content","space-between")
             let hold = tag(other_mino_size * 5.5, 2 * border_width + other_mino_size * 3.5)
@@ -886,10 +959,10 @@
                if(this.hold) hold.append(this.hold.rendered_tag(this.hold_cooldown == 0? "" : "opacity(45%)"))
             }
             let clear_info = tag("default",board_mino_size * 8).css("align-items","flex-end").css("text-align","right").css("padding",`20px ${border_width+5}px 0 0`).css("white-space","nowrap").css("color","white").css("justify-content","flex-start").addClass("column")
-            let action_text = tag().html(this.action_text).css("opacity", Math.max(1.4-(Date.now()-this.last_action_text_update)/1500, this.ruleset.minimum_action_text_opacity)).css("display","block").addClass("big")
+            let action_text = tag().html(this.action_text).css("opacity", Math.max(1.4-(Date.now()-this.last_action_text_update)/1500, this.ruleset.minimum_action_text_opacity)).css("display","block").addClass("big").css("color", this.ruleset.action_text_colour)
             let btb_displays = tag().css("margin-top", (Math.sqrt(Math.sqrt(this.powah+8))-2.5)/-2 + "em")
             let the_btb_display = tag().html("B2B x" + this.btb).css("display","block").css("visibility",(this.btb > 0)? "visible" : "hidden").css("margin-right",10).css("position","relative").css("top",3)
-            let surge_display = tag().html("&#x272E;" + this.powah + "&#x272E;").css("display",(this.powah > 0)? "block" : "none").css("color","yellow").css("font-size", (Math.sqrt(Math.sqrt(this.powah+8))-0.6) + "em")
+            let surge_display = tag().html("&#x272E;" + this.powah + "&#x272E;").css("display",(this.powah > 0)? "block" : "none").css("color","yellow").css("font-size", (Math.sqrt(Math.sqrt(this.powah+8))-0.6) + "em").addClass("powah")
             btb_displays.append(the_btb_display,surge_display)
             let combo_display = tag().html((this.combo > 0)? this.combo + " COMBO" : "").css("display","block").addClass("big").css("opacity", 1-(Date.now()-this.last_action_text_update)/1600)
             clear_info.append(action_text,btb_displays,combo_display)
@@ -923,14 +996,22 @@
                row.forEach((cell, cell_index) => {
                   let new_cell = tag(board_mino_size * scalar)
                   this.controlled_piece.tile_positions.forEach((pos, pos_index) => {
-                     if(pos.add(this.piece_position).is_equal(new vector(cell_index, row_index))) {cell = this.controlled_piece.tile_type[pos_index]; new_cell.css("filter", "brightness("+(this.lock_delay / this.ruleset.lock_delay * 60 + 40 + (this.piece_spinnin?50:0))+"%)")}
-                     else if(pos.add(this.piece_position).add(new vector(0,-this.ghost_piece_offset)).is_equal(new vector(cell_index, row_index)) && cell.type == 0) {cell = this.controlled_piece.tile_type[pos_index]; new_cell.css("filter", "opacity(60%) blur(2px)")}
+                     if(pos.add(this.piece_position).is_equal(new vector(cell_index, row_index)) && !this.piece_placed) {cell = this.controlled_piece.tile_type[pos_index]; new_cell.css("filter", "brightness("+(this.lock_delay / this.ruleset.lock_delay * 60 + 40 + (this.piece_spinnin?50:0))+"%)")}
+                     else if(pos.add(this.piece_position).add(new vector(0,-this.ghost_piece_offset)).is_equal(new vector(cell_index, row_index)) && cell.type == 0 && this.ruleset.ghost_piece && !this.piece_placed) {cell = this.controlled_piece.tile_type[pos_index]; new_cell.css("filter", "opacity(60%) blur(2px)")}
                   })
-                  new_cell.css("background", cell.tile_render_info())
+                  new_cell.css("background", cell.tile_render_info()).css("opacity", cell.opacity)
                   if(cell.type >= 1 && cell.type <= 3) new_cell.css("--bgcolor", cell.tile_render_info()).css("border-width",2).addClass("border-outset")
+                  if(cell.type == 4 && cell.subtype.post[0] == 0) new_cell.text(cell.subtype.counter).css("color","white")
                   row_tag.append(new_cell)
                })
                center.append(row_tag)
+            })
+            this.clear_whites.forEach(white => {
+               let animation = tag(board_mino_size * scalar).css("position","absolute").css("top", (this.current_board_dimensions.y - white.position.y - 1) * board_mino_size * scalar)
+               .css("left", white.position.x * board_mino_size * scalar).css("z-index",3).css("background", "#EEE")
+               if(white.animation == 0) animation.css("transform", "scaleY("+ Math.max(0, Math.min(1, 1 - white.time/white.end_time)) +")")
+               if(white.animation == 1) animation.css("scale", Math.max(0, Math.min(1, 1 - white.time/white.end_time)))
+               center.append(animation)
             })
             this.stars.forEach(star => {
                let particle = tag()
@@ -940,10 +1021,10 @@
                let traveled = Math.min(1, star.current_lifetime / star.travel_time)
                particle.css("color",star.color).css("position","absolute").css("top",star.orgin.y + (star.destination.y - star.orgin.y) * Math.min(1, Math.max(0, 1.5 * traveled - 0.5 * Math.pow(traveled, 3))))
                .css("left",star.orgin.x + (star.destination.x - star.orgin.x) * Math.min(1, Math.max(0, 1.5 * traveled - 0.5 * Math.pow(traveled, 3)))).css("opacity", star.defensive? (1 - (star.current_lifetime - star.travel_time - 0.1) / 0.3) : (1 - (star.current_lifetime - star.travel_time - 0.2) / 0.5))
-               .css("text-shadow","0 0 5px rgba(0, 0, 0, 0.8)")
+               .css("text-shadow","0 0 5px rgba(0, 0, 0, 0.8)").css("z-index", 4)
                center.append(particle)
             })
-            let pc_text = tag(this.current_board_dimensions.x * board_mino_size * scalar, 10).html(this.pc_text).css("opacity", 2-(Date.now()-this.last_pc_text_update)/1000)
+            let pc_text = tag(this.current_board_dimensions.x * board_mino_size * scalar, 10).html(this.pc_text).css("opacity", 2-(Date.now()-this.last_pc_text_update)/1000).css("top", 0.5 * board_mino_size * this.current_board_dimensions.y * scalar - 25)
             .css("text-align","center").css("font-size","3em").css("color","white").css("position","absolute")
             if(this.windups.length > 0){
                let windup_mark = tag(50).html(["?","!","!!","!!!"][this.windups[0].chunk_amount-1]).css("color","white").css("border-radius",50).css("border", "8px solid red").css("background","black")
@@ -960,12 +1041,17 @@
                for(let i = 0; i < this.ruleset.queue_size; i++) queue_display.append(this.queue[i].rendered_tag())
             }
             else queue_display = tag(3,3)
-            right.append(queue_display)
+            let mod_names = tag().css("margin",5).addClass("column").css("text-align","left").css("align-items","flex-start")
+            this.mods.forEach(mod => {
+               let name = tag().html(mods[mod].name.toUpperCase()).attr("id","mod-"+mod+"-name").css("color","white")
+               mod_names.append(name)
+            })
+            right.append(queue_display, mod_names)
 
             top.append(left, garbage_queue_display, center, right)
 
             let bottom = tag().addClass("column")
-            let altitude_display = tag().html(this.altitude.toFixed(1)).addClass("big").css("color","white").css("margin-top",3)
+            let altitude_display = tag().html(this.altitude.toFixed(1)).addClass("big").css("color","white").css("margin-top",5)
             let floor_display = tag().html("FLOOR " + this.floor).css("color","white")
             let climb_progress_display = tag(8 * board_mino_size, board_mino_size).css("border","3px solid white").css("margin-top",8)
             .css("background", climb_speed_colours[this.climb_speed-1] ?? "#E6E6E6").css("justify-content","flex-start")
@@ -991,21 +1077,31 @@
             $("#flash").css("opacity", Math.pow(Math.max(0, (this.floor < 10)? (this.altitude - ((this.ruleset.floor_tresholds[10] - this.ruleset.floor_tresholds[9]) * 0.87 + this.ruleset.floor_tresholds[9])) / (this.ruleset.floor_tresholds[10] - this.ruleset.floor_tresholds[9]) / 0.12
             : 1 - 0.25 * (this.altitude-this.ruleset.floor_tresholds[10])), 0.6))
 
-            div.append(top, bottom)
+            div.append(top_text, top, bottom)
+            this.execute_mod_functions("render", {left, center, right, bottom, scalar})
          }
          update_game_state(){
             let delta = (Date.now() - this.time_of_last_update) / 1000
             this.time_of_last_update = Date.now()
             this.time += delta
             let temp_alt = this.altitude
-            this.altitude += delta * this.climb_speed * 0.25 * this.ruleset.altitude_mult * (this.ruleset.floor_barriers? Math.min(Math.pow((Math.max(0, this.ruleset.floor_tresholds[this.floor+1] - this.altitude - 1)) / 6, 0.75), 1) : 1)
+            this.altitude += delta * this.climb_speed * 0.25 * this.ruleset.altitude_mult * this.ruleset.passive_altitude_gain * (this.ruleset.floor_barriers? Math.min(Math.pow((Math.max(0, this.ruleset.floor_tresholds[this.floor+1] - this.altitude - 1)) / 6, 0.75), 1) : 1)
             if(temp_alt < this.ruleset.floor_tresholds[this.floor+1] - 1 && this.ruleset.floor_barriers && this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 1) this.altitude = this.ruleset.floor_tresholds[this.floor+1] - 1
             if(this.bonus_altitude > 0){
                let alt_moved = Math.min(this.bonus_altitude, Math.pow(0.92, 1/(delta + 0.01)) * Math.max(this.bonus_altitude, 0.1))
                this.bonus_altitude -= alt_moved
                this.altitude += alt_moved
             }
-            if(this.altitude > this.ruleset.floor_tresholds[this.floor+1]) this.new_floor()
+            if(this.altitude > this.ruleset.floor_tresholds[this.floor+1]){this.new_region; this.new_floor()}
+            if(this.altitude > this.current_region_threshold){
+               this.new_region()
+               if(this.ruleset.shorter_region_tresholds.length > 0) this.current_region_threshold = this.ruleset.shorter_region_tresholds.shift()
+               else this.current_region_threshold += this.ruleset.other_region_interval
+            }
+            if(this.altitude > this.windup_power_increase_altitude){
+               this.ruleset.windup_maximum_attack += this.ruleset.windup_power_increase_amount
+               this.windup_power_increase_altitude += this.ruleset.windup_power_increase_interval
+            }
             if(this.climb_xp_lock_remaining <= 0) this.climb_xp -= delta * this.ruleset.climb_xp_loss_factor * (this.climb_speed * this.climb_speed + this.climb_speed) / 60
             else this.climb_xp_lock_remaining -= delta
             if(this.climb_xp < 0){
@@ -1030,6 +1126,8 @@
             this.garbage_queue.forEach(chunk => chunk.time_in_queue += delta * (this.cancelling_sickness > this.ruleset.cancelling_sickness_tresholds.less_garbage_delay? 2 : 1))
             this.stars.forEach(star => star.current_lifetime += delta)
             this.stars = this.stars.filter(star => star.current_lifetime < star.travel_time + 0.7 && (!star.defensive || star.current_lifetime < star.travel_time + 0.4))
+            this.clear_whites.forEach(white => white.time += delta)
+            this.clear_whites = this.clear_whites.filter(white => white.time < white.end_time + 0.1)
 
             if(this.windups.length > 0){
                if(!Array.isArray(this.windups[0].chunks)){
@@ -1050,6 +1148,10 @@
                }
                if(this.windups[0].time > 2 + 0.5 * this.windups[0].chunk_amount) this.windups.shift()
             }
+            if(this.top_text.length > 0 && Date.now() - this.last_top_text_update - this.top_text[0].time * 1000 > 500){
+               this.top_text.shift()
+               this.last_top_text_update = Date.now()
+            }
 
             let keys_just_pressed = [...keys_pressed].filter(key => !(this.last_update_keys_pressed.includes(key)))
             this.last_update_keys_pressed = [...keys_pressed]
@@ -1069,7 +1171,7 @@
             })
             if(inputs.includes("hold")){
                inputs = ["hold"]
-               if(this.hold_cooldown == 0){
+               if(this.hold_cooldown == 0 && !this.piece_placed){
                   while(this.piece_rotation != 0){
                      this.piece_rotation = (this.piece_rotation + 1) % 4
                      this.controlled_piece.tile_positions.forEach((position, index) => {
@@ -1095,7 +1197,7 @@
             if(this.piece_obstructed()) this.lock_delay -= delta * 0.5
             this.piece_position.y += 1
 
-            if(inputs.includes("hard_drop") || this.lock_delay < 0){
+            if((inputs.includes("hard_drop") || this.lock_delay < 0) && !this.piece_placed){
                inputs = ["hard_drop"]
                while(!(this.piece_obstructed())){
                   this.piece_position.y -= 1
@@ -1242,7 +1344,7 @@
             this.ghost_piece_offset = temp.y - this.piece_position.y - 1
             this.piece_position = temp
 
-            if(this.entering_garbage.length > 0 && Date.now() - this.last_garbage_entry > this.ruleset.garbage_entering_time * 1000){
+            while(this.entering_garbage.length > 0 && Date.now() - this.last_garbage_entry > this.ruleset.garbage_entering_time * 1000){
                this.last_garbage_entry += this.ruleset.garbage_entering_time * 1000
                this.inject_garbage(this.entering_garbage.shift())
             }
@@ -1261,6 +1363,7 @@
 
             this.ruleset.fatigue.forEach((fatigue, index) => {
                if(this.time > fatigue.time){
+                  if(fatigue.description.length > 0) this.add_top_text(fatigue.description, 5.5)
                   fatigue.effect(this)
                   this.ruleset.fatigue.splice(index, 1)
                }
@@ -1269,12 +1372,19 @@
             this.piece_position.y -= 1
             if(this.piece_obstructed()) this.lock_delay -= delta * 0.5
             this.piece_position.y += 1
+            this.execute_mod_functions("tick",{delta})
             this.render($("#board"))
+         }
+         add_top_text(text, time){
+            this.top_text.push({text, time})
+            if(this.top_text.length == 1) this.last_top_text_update = Date.now()
          }
          get_piece(name){
             return deepClone(this.ruleset.available_pieces.find(piece => piece.name == name))
          }
          spawn_piece(piece = undefined){
+            let result = this.execute_mod_functions("piece_spawn", {piece})
+            piece = result.piece
             if(!piece){
                this.controlled_piece = this.queue.shift()
                if(this.queue.length < this.ruleset.queue_size + 1) {
@@ -1302,6 +1412,7 @@
             this.piece_position = new vector(Math.ceil(this.current_board_dimensions.x/2)-1,this.current_board_dimensions.y + 1).add(this.controlled_piece.position_offset)
             if(!this.controlled_piece.center_is_in_a_middle_of_a_tile) this.piece_position.x += 1
             this.piece_rotation = 0
+            this.piece_placed = false
             this.lock_delay = this.ruleset.lock_delay
             this.lock_delay_resets = this.ruleset.lock_delay_resets
             if(this.piece_obstructed()){
@@ -1326,22 +1437,17 @@
             if(this.hold_cooldown > 0) this.hold_cooldown -= 1
 
             let lines_cleared = 0
+            let cleared_indexes = []
             let garbage_cleared = 0
             let attacks = 0
+            let pc = 0
             this.board.forEach((row, yindex) => {
                let flag = !row.find(cell => cell.type == 0 || cell.type > 2)
                if(flag){
                   lines_cleared++
+                  cleared_indexes.push(yindex)
                   if(row.find(cell => cell.type == 2)) garbage_cleared++
                   row.forEach((cell, xindex) => {this.board[yindex][xindex] = new tile(0)})
-               }
-               else{
-                  if(lines_cleared > 0){
-                     row.forEach((cell, xindex) => {
-                        this.board[yindex][xindex] = new tile(0)
-                        this.board[yindex-lines_cleared][xindex] = cell
-                     })
-                  }
                }
             })
             if(lines_cleared){
@@ -1359,7 +1465,7 @@
                   attacks = this.controlled_piece.override_attack_table.normal ?? this.ruleset.attack_table.normal
                }
                attacks = attacks[lines_cleared]
-               let pc = 2
+               pc = 2
                this.board.forEach(row => {
                   row.forEach(cell => {
                      if(cell.type == 1) pc = 0
@@ -1399,6 +1505,9 @@
                }
                this.highest_btb = Math.max(this.highest_btb, this.btb)
                this.highest_combo = Math.max(this.highest_combo, this.combo)
+               this.board.forEach(row => row.forEach(cell => {
+                  if(cell.type == 4){cell.subtype.counter--}
+               }))
             }
             else {
                if(this.piece_spinnin){
@@ -1418,6 +1527,11 @@
                      }
                      else this.chunk_started = true
                      this.reduce_cancelling_sickness(3)
+                     if(this.separate_garbage[0] > 0){
+                        this.separate_garbage[0]--
+                        this.separate_garbage[1]++
+                     }
+                     if(this.ruleset.instant_garbage_entry) this.inject_garbage(this.entering_garbage.shift())
                   }
                }
             }
@@ -1461,24 +1575,60 @@
             if(garbage_cleared > 0) this.reduce_cancelling_sickness(this.cancelling_sickness)
 
             let dropped = false
-            this.create_attacks(attacks)
             if(this.btb == -1 && this.powah > 0) {
                this.create_attacks(this.powah, "starsurge")
                this.powah = 0
                dropped = true
             }
 
-            if(lines_cleared) this.climb_xp += (Math.min(lines_cleared, 2) + 0.05) * this.ruleset.climb_xp_gain_mult
+            let result = this.execute_mod_functions("placed",{dropped, lines_cleared, garbage_cleared, cleared_indexes, attacks, pc})
+
+            this.create_attacks(result.attacks)
+            if(result.lines_cleared && this.ruleset.climb_xp_gain_methods.clear) this.climb_xp += (Math.min(result.lines_cleared, 2) + 0.05) * this.ruleset.climb_xp_gain_mult
 
             if(this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 2 && this.ruleset.floor_barriers){
-               if((attacks > 0 || dropped) && this.ruleset.barrier_skip_actions.includes("garbage_send")) this.new_floor()
-               else if(cancelled > 0 && this.ruleset.barrier_skip_actions.includes("garbage_block")) this.new_floor()
-               else if(lines_cleared > 0 && this.ruleset.barrier_skip_actions.includes("line_clear")) this.new_floor()
+               if(result.lines_cleared > 0 && this.ruleset.barrier_skip_actions.includes("line_clear")) this.new_floor()
             }
 
+            this.board.forEach(row => {
+               let flag = false
+               row.forEach(cell => {
+                  if(cell.type == 4){if(cell.subtype.counter == 0){cell.type = cell.subtype.post[0]; cell.subtype = cell.subtype.post[1] ?? 0; flag = true}}
+               })
+               if(flag) this.garbage_entry_row -= 1
+            })
+            this.piece_placed = true
+
+            let wait_time = (lines_cleared > 0)? this.ruleset.lc_are : 0
+
+
+            result.cleared_indexes.forEach((yindex, index_index) => {
+               this.board[yindex].forEach((cell, xindex) => {
+                  if(wait_time <= 0.7 && wait_time > 0.25) this.clear_whites.push({position: new vector(xindex,yindex), animation: 0, time: 0, end_time: wait_time - 0.15})
+                  if(wait_time > 0.7) this.clear_whites.push({position: new vector(xindex,yindex), animation: 1, time: (-xindex/* - (cleared_indexes.length - 1 - index_index) / 2*/) * (wait_time - 0.2) * (2/3) / (this.current_board_dimensions.x - 1/* + (lines_cleared - 1) / 2*/), end_time: (wait_time - 0.2) / 3})
+               })
+            })
+
+            if(wait_time > 0) window.setTimeout(() => this.update_clears_and_continue(cleared_indexes), wait_time * 1000)
+            else this.update_clears_and_continue(cleared_indexes)
+            
+         }
+         update_clears_and_continue(cleared_indexes){
+            if(cleared_indexes.length > 0){
+                  let amount = 0
+                  this.board.forEach((row, yindex) => {
+                     if(!cleared_indexes.includes(yindex)) row.forEach((cell, xindex) => {
+                        this.board[yindex][xindex] = new tile(0)
+                        this.board[yindex - amount][xindex] = cell
+                     })
+                     else amount++
+                  })
+               }
             this.spawn_piece()
          }
          create_attacks(amount, type = "normal"){
+            let result = this.execute_mod_functions("attack", {amount, type})
+            amount = result.amount
             let orgin = new vector(this.piece_position.x / this.current_board_dimensions.y * 20 * board_mino_size, (this.current_board_dimensions.y - this.piece_position.y) / this.current_board_dimensions.y * 20 * board_mino_size - 0.5 * board_mino_size)
             if(type == "starsurge") orgin = new vector(-80, 150)
 
@@ -1509,10 +1659,12 @@
             }
             if(cancelled) {
                this.attacks_cancelled += cancelled
-               this.climb_xp += (cancelled * 0.5 + 0.05) * this.ruleset.climb_xp_gain_mult
+               if(this.ruleset.climb_xp_gain_methods.block) this.climb_xp += (cancelled * 0.5 + 0.05) * this.ruleset.climb_xp_gain_mult
                for(let i = 0; i < cancelled; i++){
                   this.stars.push(new attack_star(orgin, 0, 1, true, new vector(-20, (this.current_board_dimensions.y - total_attacks_in_queue + i) / this.current_board_dimensions.y * 20 * board_mino_size)))
                }
+               this.separate_garbage[0] -= cancelled
+               if(this.separate_garbage[0] < 0) this.separate_garbage[0] = 0
             }
             if(amount) {
                let stars = [amount, 0, 0]
@@ -1526,17 +1678,22 @@
                   stars[1] -= 10
                   stars[2]++
                }
-               console.log(stars)
                while(stars[stars.length-1] == 0) stars.pop()
                while(stars.length > 0) {
                   this.stars.push(new attack_star(orgin, Math.min(400, Math.cbrt(amount) * 30), stars.length))
                   stars[stars.length-1]--
                   while(stars[stars.length-1] == 0) stars.pop()
                }
-               this.climb_xp += (amount + 0.05) * this.ruleset.climb_xp_gain_mult
+               if(this.ruleset.climb_xp_gain_methods.send) this.climb_xp += (amount + 0.05) * this.ruleset.climb_xp_gain_mult
                this.attacks_sent += amount
                send_attacks(this, amount)
             }
+
+            if(this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 2 && this.ruleset.floor_barriers){
+               if((amount > 0) && this.ruleset.barrier_skip_actions.includes("garbage_send")) this.new_floor()
+               else if(cancelled > 0 && this.ruleset.barrier_skip_actions.includes("garbage_block")) this.new_floor()
+            }
+
             this.bonus_altitude += amount * this.climb_speed / 4 * this.ruleset.altitude_mult
             this.cancelling_sickness += cancelled * this.ruleset.cancelling_sickness_gain_mult
          }
@@ -1558,65 +1715,24 @@
             })
          }
          new_floor(){
-            //console.log("attacks received on floor " + this.floor, this.attacks_received)
-            //this.attacks_received = 0
             this.floor++
             this.bonus_altitude += this.ruleset.floor_cross_altitude * this.ruleset.altitude_mult
-            this.ruleset.garbage_messiness += 0.03
-            this.ruleset.garbage_favour -= 3
-            //if(this.ruleset.garbage_messiness > 0.15 || this.floor > 5) this.ruleset.garbage_gathering = false
+            this.ruleset.garbage_messiness += this.ruleset.garbage_messiness_per_floor
+            this.ruleset.garbage_favour += this.ruleset.garbage_favour_per_floor
+            this.execute_mod_functions("floor")
+            this.execute_mod_functions("region")
          }
-         inject_garbage(new_attack = true, messiness = this.ruleset.garbage_messiness, perma = false){
-            messiness -= Math.min(1, this.targeting_grace / this.ruleset.targeting_grace_effective_max) * this.ruleset.targeting_grace_max_messiness_reduction
-            if(new_attack) messiness *= 2.5
-            if((Math.random() < messiness || this.current_garbage_pattern === undefined) && !perma){
-               let columns = [{number: 0, difficulty: 0, weight: 0}]
-               while(columns.length < this.current_board_dimensions.x) columns.push({number: columns[columns.length-1].number+1, difficulty: 0, weight: 0})
-               columns = columns.filter(column => !this.ruleset.garbage_gathering || this.ruleset.garbage_messiness > this.ruleset.garbage_gathering_max_messiness || (column.number >= Math.min(2, Math.ceil((this.current_board_dimensions.x - 4)/2)) && column.number <= this.current_board_dimensions.x - 1 - Math.min(2, Math.floor((this.current_board_dimensions.x - 4)/2))))
-               let highest_spot = 0
-               let highest_garbage_holes = []
-               let highest_garbage_row = -1
-               let FINAL_COLUMNS = []
-               this.board.forEach((row, yindex) => {
-                  let holes = []
-                  row.forEach((cell, xindex) => {
-                     if([1,2].includes(cell.type)) highest_spot = yindex 
-                     else holes.push(xindex)
-                     if(cell.type == 2) highest_garbage_row = yindex
-                  })
-                  if(yindex == highest_garbage_row) highest_garbage_holes = [...holes]
-               })
-               columns.forEach(column => {
-                  let hole
-                  for(let i = 0; i < this.current_board_dimensions.y + 20; i++){
-                     if([0,5].includes(this.board[i][column.number].type)){hole = i; break;}
-                  }
-                  column.difficulty += highest_spot - hole
-                  if(highest_garbage_holes){
-                     column.difficulty += 5 * Math.min(...highest_garbage_holes.map(xpos => Math.abs(xpos - column.number)))
-                  }
-               })
-               columns.sort(() => 0.5 - Math.random())
-               columns.sort((a, b) => a.difficulty-b.difficulty)
-               for(let i = 0; i < this.ruleset.garbage_well_amount; i++){
-                  let total_weight = 0
-                  columns.forEach((column, index) => {
-                     column.weight = Math.max(10 + this.ruleset.garbage_favour - index * this.ruleset.garbage_favour / 4.5, 0)
-                     total_weight += column.weight
-                  })
-                  let lottery_score = Math.random() * total_weight
-                  let index = -1
-                  while(lottery_score > 0){
-                     index++
-                     lottery_score -= columns[index].weight
-                  }
-                  FINAL_COLUMNS.push(columns[index].number)
-                  columns.splice(index, 1)
-               }
-               this.current_garbage_pattern = []
-               for(let i = 0; i < this.current_board_dimensions.x; i++) this.current_garbage_pattern.push(FINAL_COLUMNS.includes(i)? 0 : 1)
+         new_region(){
+
+         }
+         inject_garbage(new_attack = true, messiness = this.ruleset.garbage_messiness, type = "normal", counter = 10, override_pattern = undefined){
+            let pattern = override_pattern ?? this.current_garbage_pattern
+            let garbage_entry_row = this.garbage_entry_row
+            if(type == "wound"){
+               while(garbage_entry_row > 0 && this.board[garbage_entry_row - 1][0].type == 4 && this.board[garbage_entry_row - 1][0].subtype.counter <= counter) garbage_entry_row--
             }
-            for(let i = this.board.length - 1; i >= this.garbage_entry_row; i--){
+            let result = this.execute_mod_functions("garbage", {garbage_pattern: [...pattern]})
+            for(let i = this.board.length - 1; i >= garbage_entry_row; i--){
                for(let j = 0; j < this.board[i].length; j++){
                   if(this.board[i][j].type != 0){
                      if(i == this.board.length - 1) death(this)
@@ -1627,19 +1743,80 @@
                   }
                }
             }
-            for(let i = 0; i < this.board[this.garbage_entry_row].length; i++){
-               if(perma) this.board[this.garbage_entry_row][i] = new tile(3)
-               else if(this.current_garbage_pattern[i] == 0) this.board[this.garbage_entry_row][i] = new tile(0)
-               else if(this.current_garbage_pattern[i] == 1) this.board[this.garbage_entry_row][i] = new tile(2)
+            for(let i = 0; i < this.board[garbage_entry_row].length; i++){
+               if(type == "perma") this.board[garbage_entry_row][i] = new tile(3)
+               else if(result.garbage_pattern[i] == 0) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[0,0]}) : new tile(0)
+               else if(result.garbage_pattern[i] == 1) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[2,0]}) : new tile(2)
             }
-            if(perma) this.garbage_entry_row++
+            if(type == "perma" || type == "wound") this.garbage_entry_row++
             if(this.piece_obstructed()) this.piece_position.y++
+
+            messiness -= Math.min(1, this.targeting_grace / this.ruleset.targeting_grace_effective_max) * this.ruleset.targeting_grace_max_messiness_reduction
+            if(new_attack) messiness *= 2.5
+            if((Math.random() < messiness || this.current_garbage_pattern === undefined || this.separate_garbage[1] > 0) && !(type == "perma")){
+               if(this.separate_garbage[1] > 0){
+                  let current_pattern = [...this.current_garbage_pattern]
+                  do {this.current_garbage_pattern = this.randomize_garbage_pattern(true)} while(this.current_garbage_pattern.filter((col, index) => col != current_pattern[index]).length == 0)
+                  this.separate_garbage[1]--
+               }
+               else this.current_garbage_pattern = this.randomize_garbage_pattern()
+               this.execute_mod_functions("new_garbage_pattern")
+            }
          }
-         manual_delayed_injection(amount, delay, perma = false){
+         randomize_garbage_pattern(ignore_stuff = false){
+            let columns = [{number: 0, difficulty: 0, weight: 0}]
+            while(columns.length < this.current_board_dimensions.x) columns.push({number: columns[columns.length-1].number+1, difficulty: 0, weight: 0})
+            columns = columns.filter(column => ignore_stuff || !this.ruleset.garbage_gathering || this.ruleset.garbage_messiness > this.ruleset.garbage_gathering_max_messiness || (column.number >= Math.min(2, Math.ceil((this.current_board_dimensions.x - 4)/2)) && column.number <= this.current_board_dimensions.x - 1 - Math.min(2, Math.floor((this.current_board_dimensions.x - 4)/2))))
+            let highest_spot = 0
+            let highest_garbage_holes = []
+            let highest_garbage_row = -1
+            let FINAL_COLUMNS = []
+            this.board.forEach((row, yindex) => {
+               let holes = []
+               row.forEach((cell, xindex) => {
+                  if([1,2].includes(cell.type)) highest_spot = yindex 
+                  else holes.push(xindex)
+                  if(cell.type == 2) highest_garbage_row = yindex
+               })
+               if(yindex == highest_garbage_row) highest_garbage_holes = [...holes]
+            })
+            columns.forEach(column => {
+               let hole
+               for(let i = 0; i < this.current_board_dimensions.y + 20; i++){
+                  if([0,5].includes(this.board[i][column.number].type)){hole = i; break;}
+               }
+               column.difficulty += highest_spot - hole
+               if(highest_garbage_holes){
+                  column.difficulty += 5 * Math.min(...highest_garbage_holes.map(xpos => Math.abs(xpos - column.number)))
+               }
+            })
+            columns.sort(() => 0.5 - Math.random())
+            columns.sort((a, b) => a.difficulty-b.difficulty)
+            for(let i = 0; i < this.ruleset.garbage_well_amount; i++){
+               let total_weight = 0
+               columns.forEach((column, index) => {
+                  column.weight = Math.max(10 + ((ignore_stuff)? 0 : this.ruleset.garbage_favour) - index * ((ignore_stuff)? 0 : this.ruleset.garbage_favour) / 4.5, 0)
+                  total_weight += column.weight
+               })
+               let lottery_score = Math.random() * total_weight
+               let index = -1
+               do {
+                  index++
+                  lottery_score -= columns[index].weight
+               } while(lottery_score > 0)
+               FINAL_COLUMNS.push(columns[index].number)
+               columns.splice(index, 1)
+            }
+            let new_garbage_pattern = []
+            for(let i = 0; i < this.current_board_dimensions.x; i++) new_garbage_pattern.push(FINAL_COLUMNS.includes(i)? 0 : 1)
+            let result = this.execute_mod_functions("garbage_pattern", {new_garbage_pattern})
+            return result.new_garbage_pattern
+         }
+         manual_delayed_injection(amount, delay, type = "normal"){
             if(amount > 0){
                window.setTimeout(() => {
-                  this.inject_garbage(false, 0, true)
-                  this.manual_delayed_injection(amount-1, delay, perma)
+                  this.inject_garbage(false, 0, type)
+                  this.manual_delayed_injection(amount-1, delay, type)
                }, delay * 1000)
             }
          }
@@ -1649,10 +1826,29 @@
             this.cancelling_sickness_pieces_since_reduced = 0
             this.cancelling_sickness_last_reduced = Date.now()
          }
+         execute_mod_functions(name, input = undefined){
+            let function_table = this.mods.map(mod => mods[mod][name]).flat(1).filter(func => func)
+            function_table.sort((a, b) => b.priority - a.priority)
+            return function_table.reduce((inp, func) => func.effect(this, inp), input)
+         }
+         enable_hard_mode(){
+            this.ruleset.naked_single_sends = false
+            this.ruleset.targeting_reduction_in_danger = 0
+         }
+         remove_base_fatigue(){
+            if(!this.base_fatigue_removed){
+               [480,540,600,660,720].forEach(time => this.ruleset.fatigue.splice(this.ruleset.fatigue.findIndex(fatigue => fatigue.time == time), 1))
+               this.base_fatigue_removed = true
+            }
+         }
          constructor(){
             this.reset_board()
-            this.hold = undefined
+            modblocks.forEach(block => {if(block.selected) this.mods.push(block[block.state])})
+            this.mods.sort((a, b) => a - b)
             this.queue = []
+            this.execute_mod_functions("start")
+            this.current_garbage_pattern = this.randomize_garbage_pattern()
+            this.execute_mod_functions("new_garbage_pattern")
             this.bag.sort(() => 0.5 - Math.random())
             while(this.queue.length < this.ruleset.queue_size + 3){
                this.queue.push(this.get_piece(this.bag.pop()))
@@ -1661,6 +1857,7 @@
                   this.bag.sort(() => 0.5 - Math.random())
                }
             }
+            this.hold_cooldown = this.ruleset.hold_cooldown >= 0? 0 : -1
             $("body").css("overflow", "hidden")
             $("#board").css("display","flex").css("scale",1)
             $("#background").css("display","flex")
@@ -1747,7 +1944,7 @@
          }
          constructor(skill){
             this.skill_score = skill
-            this.apm = Math.pow(skill, 8) * 25 + Math.pow(skill, 4) * 100 + skill * 33 + 11
+            this.apm = Math.pow(skill, 4) * 126 + skill * 32 + 9
             this.dss = 2.1 * skill + 0.4
             this.update_timer = window.setInterval(() => {this.update()}, 500)
          }
@@ -1776,6 +1973,518 @@
          }
          return clone;
       }
+      let mods = [
+         {
+            name: "no hold",
+            start: {effect: (recipient, input) => {recipient.ruleset.hold_cooldown = -1}, priority: 0}
+         },
+         {
+            name: "asceticism",
+            extra_hole_side: ((Math.random > 0.5)? -1 : 1),
+            start: {effect: (recipient, input) => {
+               let this_mod = mods[1]
+               this_mod.extra_hole_side = ((Math.random > 0.5)? -1 : 1)
+               recipient.ruleset.hold_cooldown = -1
+               recipient.ruleset.queue_size = 1
+               recipient.ruleset.ghost_piece = false
+               recipient.ruleset.bag_refresh_at = 6
+               recipient.ruleset.available_pieces.find(piece => piece.name == "T").override_attack_table = {}
+               recipient.ruleset.cancelling_sickness_gain_mult = 0
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+            }, priority: 0},
+            garbage: {effect: (recipient, input) => {
+               let this_mod = mods[1]
+               if(Math.random() < (recipient.floor + 1) * 0.05) this_mod.extra_hole_side *= -1
+               let pattern = input.garbage_pattern.map((column, index) => column == 0? index : undefined).filter(column => column != undefined)
+               if(pattern.filter(column => !pattern.includes(column + this_mod.extra_hole_side) && column + this_mod.extra_hole_side >= 0 && column + this_mod.extra_hole_side < recipient.current_board_dimensions.x).length == 0) this_mod.extra_hole_side *= -1
+               pattern = pattern.filter(column => !pattern.includes(column + this_mod.extra_hole_side) && column + this_mod.extra_hole_side >= 0 && column + this_mod.extra_hole_side < recipient.current_board_dimensions.x)
+               if(pattern.length > 0){
+                  pattern.sort(() => 0.5 - Math.random())
+                  input.garbage_pattern[pattern[0] + this_mod.extra_hole_side] = 0
+               }
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "messier garbage",
+            start: {effect: (recipient, input) => {
+               recipient.ruleset.garbage_messiness += 0.25
+               recipient.ruleset.fatigue.push({time: 360, effect: (player) => {player.ruleset.targeting_grace_max_messiness_reduction = 0}, description: ""})
+               recipient.ruleset.garbage_favour -= 25
+            }, priority: 0}
+         },
+         {
+            name: "loaded dice",
+            start: [{effect: (recipient, input) => {
+               recipient.ruleset.garbage_messiness += 1
+               recipient.ruleset.lc_are += 1.15
+               recipient.ruleset.fatigue.push({time: 360, effect: (player) => {player.ruleset.targeting_grace_max_messiness_reduction = 0}, description: ""})
+               recipient.ruleset.garbage_favour -= 25
+               recipient.ruleset.garbage_line_protection_max_stacks = 5
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5]
+               recipient.enable_hard_mode()
+            }, priority: 0},
+            {effect: (recipient, input) => {
+               for(let i = 0; i < Math.min(12, recipient.current_board_dimensions.y - 2); i++){
+                  for(j = 0; j < Math.ceil(recipient.current_board_dimensions.x / 2); j++){
+                     if(([1,3].includes(i % 4) && j % 4 != 0) || (i % 4 == 2 && [1,3].includes(j % 4))){
+                        recipient.board[i][Math.ceil(recipient.current_board_dimensions.x / 2)-1-j] = new tile(2)
+                        if(Math.ceil(recipient.current_board_dimensions.x / 2) + j < recipient.current_board_dimensions.x)
+                           recipient.board[i][Math.ceil(recipient.current_board_dimensions.x / 2)+j] = new tile(2)
+                     }
+                  }
+               }
+            }, priority: -1}],
+         },
+         {
+            name: "gravity",
+            target_gravity: 30,
+            lock_delay_table: [0.5,0.5,0.48333,0.46666,0.45,0.43333,0.4,0.36666,0.33333,0.3,0.26666],
+            start: {effect: (recipient, input) => {
+               mods[4].target_gravity = 30
+            }, priority: 0},
+            tick: {effect: (recipient, input) => {
+               let this_mod = mods[4]
+               if(recipient.time > 1) recipient.ruleset.gravity += Math.min(this_mod.target_gravity - recipient.ruleset.gravity, 10) * input.delta
+               return input
+            }, priority: 0},
+            floor: {effect: (recipient, input) => {
+               let this_mod = mods[4]
+               this_mod.target_gravity += 18
+               recipient.ruleset.lock_delay = this_mod.lock_delay_table[recipient.floor]
+            }, priority: 0}
+         },
+         {
+            name: "freefall",
+            target_gravity: 1200,
+            lock_delay_table: [0.5,0.4,0.36666,0.33333,0.3,0.26666,0.25,0.23333,0.21666,0.2,0.18333],
+            start: {effect: (recipient, input) => {
+               recipient.ruleset.lock_delay = 0.4
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+            }, priority: 0},
+            tick: {effect: (recipient, input) => {
+               let this_mod = mods[5]
+               if(recipient.time > 1) recipient.ruleset.gravity += Math.min(this_mod.target_gravity - recipient.ruleset.gravity, recipient.ruleset.gravity * 1.2, 180) * input.delta
+               return input
+            }, priority: 0},
+            floor: {effect: (recipient, input) => {
+               let this_mod = mods[5]
+               recipient.ruleset.lock_delay = this_mod.lock_delay_table[recipient.floor]
+            }, priority: 0}
+         },
+         {
+            name: "volatile garbage",
+            start: {effect: (recipient, input) => {
+               recipient.garbage_received_mults.voli = 2
+               recipient.ruleset.windup_threshold *= 2
+               recipient.ruleset.windup_maximum_attack *= 2
+               recipient.ruleset.windup_power_increase_amount *= 2
+               recipient.ruleset.cancelling_mult *= 2
+               Object.keys(recipient.ruleset.cancelling_sickness_tresholds).forEach(treshold => {if(treshold != "i5") recipient.ruleset.cancelling_sickness_tresholds[treshold] *= 2}) 
+            }, priority: 0}
+         },
+         {
+            name: "last stand",
+            next_garbage_pattern: [],
+            start: [{effect: (recipient, input) => {
+               recipient.garbage_received_mults.voli = 3
+               recipient.ruleset.targeting_grace_mult = 0.334
+               recipient.ruleset.windup_threshold *= 2
+               recipient.ruleset.windup_maximum_attack *= 2
+               recipient.ruleset.windup_power_increase_amount *= 2
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5]
+               recipient.ruleset.board_dimension_mults.y = 0.7
+               recipient.recalculate_board_dimensions()
+               recipient.ruleset.garbage_gathering_max_messiness = 5
+               recipient.enable_hard_mode()
+            }, priority: 0}, {effect: (recipient, input) => {
+               recipient.ruleset.garbage_favour = 50
+               recipient.ruleset.garbage_favour_per_floor = 0
+               recipient.current_garbage_pattern = recipient.randomize_garbage_pattern()
+               recipient.execute_mod_functions("new_garbage_pattern")
+            }, priority: -2},
+            ],
+            new_garbage_pattern: {effect: (recipient, input) => {
+               let this_mod = mods[7]
+               let pattern = recipient.current_garbage_pattern
+               recipient.current_garbage_pattern = this_mod.next_garbage_pattern
+               this_mod.next_garbage_pattern = pattern
+            }, priority: -1},
+            render: {effect: (recipient, input) => {
+               let this_mod = mods[7]
+               recipient.current_garbage_pattern.forEach((col, index) => {
+                  if(col == 0){
+                     let arrow = tag().html("&#x25B2;").css("position","absolute").css("top",recipient.current_board_dimensions.y * board_mino_size * input.scalar - 5)
+                     .css("left", board_mino_size * input.scalar * index).css("color","white").css("font-size",board_mino_size * input.scalar)
+                     input.center.append(arrow)
+                  }
+               })
+               this_mod.next_garbage_pattern.forEach((col, index) => {
+                  if(col == 0){
+                     let arrow = tag().html("&#x2227;").css("position","absolute").css("top",recipient.current_board_dimensions.y * board_mino_size * input.scalar + 5)
+                     .css("left", board_mino_size * input.scalar * (index + 0.2)).css("color","white").css("font-size",board_mino_size * input.scalar)
+                     input.center.append(arrow)
+                  }
+               })
+               return input
+            }, priority: 0},
+         },
+         {
+            name: "double hole garbage",
+            garbage: {effect: (recipient, input) => {
+               if(Math.random() < 0.5){
+                  let pattern = input.garbage_pattern.map((column, index) => column == 1? index : undefined).filter(column => column != undefined)
+                  input.garbage_pattern[pattern.sort(() => Math.random() - 0.5)[0]] = 0
+               }
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "damnation",
+            lower_variation: Math.random() < 0.5,
+            blight: false,
+            garbage_cleared: false,
+            line_cleared: false,
+            start: [{effect: (recipient, input) => {
+               let this_mod = mods[9]
+               this_mod.blight = false
+               this_mod.lower_variation = Math.random() < 0.5
+               recipient.ruleset.garbage_messiness += 21.37
+               recipient.ruleset.garbage_well_amount = this_mod.lower_variation? 6 : 7 
+               recipient.ruleset.garbage_line_protection_max_stacks = 5
+               recipient.ruleset.available_pieces.forEach(piece => {if(piece.spin_detection == "immobility") piece.spin_detection = "none"})
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5,2.5]
+               recipient.ruleset.garbage_cap = 2
+               recipient.enable_hard_mode()
+            }, priority: 0},
+            {effect: (recipient, input) => {
+               recipient.ruleset.garbage_favour_per_floor = 0
+               recipient.ruleset.garbage_favour = 0
+               for(let i = 0; i < Math.min(12, recipient.current_board_dimensions.y - 2); i++){
+                  for(j = (recipient.mods.includes(3)? Math.ceil(recipient.current_board_dimensions.x / 2) : 0); j < recipient.current_board_dimensions.x; j++){
+                     if((i + j) % 2 == 0) recipient.board[i][j] = new tile(2)
+                     else recipient.board[i][j] = new tile(0)
+                  }
+               }
+            }, priority: -1}],
+            garbage_pattern: {effect: (recipient, input) => {
+               let this_mod = mods[9]
+               this_mod.lower_variation = Math.random() < 0.5
+               recipient.ruleset.garbage_well_amount = this_mod.lower_variation? 6 : 7
+               return input
+            }, priority: 0},
+            placed: {effect: (recipient, input) => {
+               let this_mod = mods[9]
+               if(input.garbage_cleared > 0) this_mod.garbage_cleared = true
+               if(input.lines_cleared > 0) this_mod.line_cleared = true
+               recipient.btb = -1
+               return input
+            }, priority: 0},
+            attack: {effect: (recipient, input) => {
+               if(input.type == "normal"){
+                  let this_mod = mods[9]
+                  if(this_mod.blight) input.amount *= 1.75
+                  else if(!this_mod.garbage_cleared) input.amount = 0
+                  if(this_mod.line_cleared){
+                     if(this_mod.blight && !this_mod.garbage_cleared) recipient.create_attacks(1, "starsurge")
+                     this_mod.blight = this_mod.garbage_cleared
+                  }
+                  this_mod.garbage_cleared = false
+                  this_mod.line_cleared = false
+               }
+               return input
+            }, priority: 0},
+            render: {effect: (recipient, input) => {
+               let this_mod = mods[9]
+               if(this_mod.blight) $("#board .powah").html("&#x272E; BLIGHT &#x272E;").css("display", "block")
+               return input
+            }, priority: 0},
+            piece_spawn: {effect: (recipient, input) => {
+               while(recipient.board.filter(row => row.find(cell => cell.type == 2)).length < Math.min(4, recipient.current_board_dimensions.y - 2)) recipient.inject_garbage()
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "invisible",
+            target_opacity: 0,
+            time_since_flash: 0,
+            start: {effect: (recipient, input) => {
+               let this_mod = mods[10]
+               this_mod.target_opacity = 0
+               this_mod.time_since_flash = 0
+            }, priority: 0},
+            tick: {effect: (recipient, input) => {
+               let this_mod = mods[10]
+               this_mod.time_since_flash += input.delta
+               if(this_mod.time_since_flash > 5) this_mod.time_since_flash -= 5
+               if(this_mod.time_since_flash < 0.2) this_mod.target_opacity = this_mod.time_since_flash / 0.2
+               else this_mod.target_opacity = 1 - (this_mod.time_since_flash - 0.5) / 1.1
+               recipient.board.forEach(row => {row.forEach(cell => {
+                  if(cell.type == 1){
+                     cell.opacity += Math.sign(this_mod.target_opacity - cell.opacity) * Math.min(Math.abs(this_mod.target_opacity - cell.opacity), 3 * input.delta)
+                     cell.opacity = Math.min(1, Math.max(0, cell.opacity))
+                  }
+               })})
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "exile",
+            start: [{effect: (recipient, input) => {
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+            }, priority: 0},
+            {effect: (recipient, input) => {
+               let to_add = Math.max(0, Math.min(3, recipient.current_board_dimensions.y - 2) - recipient.board.filter(row => row.find(cell => cell.type == 2)).length - recipient.garbage_queue.reduce((sum,chunk) => sum + chunk.size, 0))
+               for(let i = 0; i < to_add; i++) recipient.garbage_queue.push({size: 1, time_in_queue: 5})
+               recipient.separate_garbage[0] += to_add
+            }, priority: -2}],
+            tick: {effect: (recipient, input) => {
+               recipient.board.forEach((row) => {row.forEach(cell => {
+                  if(cell.type == 1){
+                     cell.opacity -= Math.min(cell.opacity, 3 * input.delta)
+                     cell.opacity = Math.min(1, Math.max(0, cell.opacity))
+                  }
+                  if(cell.type == 2){
+                     let garbage_rows = recipient.board.filter(row => row.find(cell => cell.type == 2))
+                     garbage_rows = garbage_rows.slice(garbage_rows.length - 3)
+                     cell.opacity = ((garbage_rows.findIndex(a_row => a_row == row) + 1) + 3 - Math.min(3, garbage_rows.length)) / 3 - 0.1
+                  }
+               })})
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "all-spin",
+            previous: {
+               amount: -1,
+               piece: "",
+               spun: 0
+            },
+            wounds_to_inject: 0,
+            start: [{effect: (recipient, input) => {
+               recipient.ruleset.attack_table.spin = [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42]
+               recipient.ruleset.minimum_action_text_opacity = 0.7
+               mods[12].previous.amount = -1
+            }, priority: 0},
+            {effect: (recipient, input) => {
+               recipient.ruleset.available_pieces.forEach(piece => {if(piece.spin_detection == "none") piece.spin_detection = "immobility"})
+            }, priority: -1}],
+            placed: {effect: (recipient, input) => {
+               let this_mod = mods[12]
+               if(input.lines_cleared > 0 || recipient.piece_spinnin > 0){
+                  if(input.lines_cleared == this_mod.previous.amount && ((recipient.piece_spinnin == 0 && this_mod.previous.spun == 0) || (recipient.piece_spinnin == this_mod.previous.spun && recipient.controlled_piece.name == this_mod.previous.piece))){
+                     recipient.ruleset.action_text_colour = "red"
+                     this_mod.wounds_to_inject++
+                     if(input.lines_cleared > 0) recipient.board.forEach(row => row.forEach(cell => {if(cell.type == 4) cell.subtype.counter++}))
+                  }
+                  else recipient.ruleset.action_text_colour = "white"
+                  this_mod.previous.amount = input.lines_cleared
+                  this_mod.previous.spun = recipient.piece_spinnin
+                  this_mod.previous.piece = recipient.controlled_piece.name
+               }
+               return input
+            }, priority: 0},
+            piece_spawn: {effect: (recipient, input) => {
+               let this_mod = mods[12]
+               while(this_mod.wounds_to_inject > 0){
+                  recipient.inject_garbage(false, 0, "wound", recipient.floor + 5, recipient.randomize_garbage_pattern(true))
+                  this_mod.wounds_to_inject--
+               }
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "warlock",
+            previous_amount: -2,
+            wounds_to_inject: 0,
+            garbo_curse: false,
+            usual_mult: 1,
+            start: [{effect: (recipient, input) => {
+               recipient.ruleset.attack_table.spin = [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42]
+               recipient.ruleset.garbage_line_protection_max_stacks = 5
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.ruleset.garbage_messiness += 0.3
+               recipient.enable_hard_mode()
+               recipient.ruleset.gravity_increase = 0
+               recipient.ruleset.minimum_action_text_opacity = 0.7
+               recipient.ruleset.btb_charging_starting_btb = 4
+               recipient.ruleset.btb_chaining_thresholds = [1,4]
+               mods[13].previous_amount = -2
+               mods[13].garbo_curse = false
+            }, priority: 0},
+            {effect: (recipient, input) => {
+               let to_add = Math.max(0, Math.min(10, recipient.current_board_dimensions.y - 2) - recipient.board.findLastIndex(row => row.find(cell => cell.type == 2)) - 1 - recipient.garbage_queue.reduce((sum,chunk) => sum + chunk.size, 0))
+               for(let i = 0; i < to_add; i++) recipient.garbage_queue.push({size: 1, time_in_queue: 5})
+               recipient.separate_garbage[0] += to_add
+               recipient.ruleset.available_pieces.forEach(piece => {if(piece.spin_detection == "none") piece.spin_detection = "immobility"})
+            }, priority: -2}],
+            placed: {effect: (recipient, input) => {
+               let this_mod = mods[13]
+               if(input.lines_cleared > 0 || recipient.piece_spinnin > 0){
+                  if(!recipient.piece_spinnin && this_mod.previous_amount == -1 || (recipient.piece_spinnin && input.lines_cleared == this_mod.previous_amount)){
+                     recipient.ruleset.action_text_colour = "red"
+                     this_mod.wounds_to_inject += 20
+                     recipient.clutch = false
+                     if(input.lines_cleared > 0) recipient.board.forEach(row => row.forEach(cell => {if(cell.type == 4) cell.subtype.counter++}))
+                  }
+                  else recipient.ruleset.action_text_colour = "white"
+                  this_mod.previous_amount = recipient.piece_spinnin? input.lines_cleared : -1
+                  if(!recipient.piece_spinnin){
+                     recipient.action_text = "VOID"
+                     input.attacks = (recipient.combo >= 2)? Math.log(1 + 1.25 * this.combo) : 0
+                     if(input.pc > 0) input.attacks += (input.pc == 2)? recipient.ruleset.pc_attacks : recipient.ruleset.cc_attacks
+                  }
+                  else if(input.lines_cleared == 0 && (recipient.btb >= 4 || (recipient.mods.includes(9) && mods[9].blight))){
+                     input.attacks = 1 + (recipient.btb > 0)? 1 : 0
+                     recipient.btb++
+                     recipient.powah++
+                  }
+               }
+               if(!this_mod.garbo_curse && recipient.garbage_lines_cleared < 5 && recipient.altitude > 800){
+                  this_mod.garbo_curse = true
+                  this_mod.usual_mult = recipient.ruleset.climb_xp_gain_mult
+                  recipient.ruleset.climb_xp_gain_mult = 0
+               }
+               if(this_mod.garbo_curse && recipient.garbage_cleared >= 5){
+                  this_mod.garbo_curse = false
+                  recipient.ruleset.climb_xp_gain_mult = this_mod.usual_mult
+               }
+               return input
+            }, priority: 0},
+            piece_spawn: {effect: (recipient, input) => {
+               let this_mod = mods[13]
+               while(this_mod.wounds_to_inject > 0){
+                  recipient.inject_garbage(false, 0, "wound", recipient.floor + 5, recipient.randomize_garbage_pattern(true))
+                  this_mod.wounds_to_inject--
+               }
+               return input
+            }, priority: 0},
+            render: {effect: (recipient, input) => {
+               $("#board .powah").css("color","black").css("text-shadow","0 0 5px rgba(255, 255, 255, 1)")
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "expert",
+            start: {effect: (recipient, input) => {
+               recipient.ruleset.garbage_entry_delay = [2.2,2,1.8,1.6,1.4,1.2,1,0.8,0.6,0.4]
+               recipient.ruleset.garbage_messiness += 0.02
+               recipient.ruleset.garbage_messiness_per_floor = 0.05
+               recipient.ruleset.climb_xp_gain_methods.clear = false
+               recipient.ruleset.climb_xp_gain_methods.block = false
+               recipient.ruleset.climb_xp_loss_factor = 5
+               recipient.ruleset.instant_garbage_entry = true
+               recipient.garbage_received_mults.expert = 1.5
+               recipient.ruleset.garbage_favour -= 33
+               recipient.enable_hard_mode()
+            }, priority: 0},
+         },
+         {
+            name: "tyrant",
+            altitude_loss: [0.6,0.8,1.1,1.5,2,2.6,3.3,4.1,5,6],
+            time_on_floor: -60,
+            start: {effect: (recipient, input) => {
+               let this_mod = mods[15]
+               this_mod.time_on_floor = -60
+               recipient.ruleset.garbage_entry_delay = [2.2,2,1.8,1.6,1.4,1.2,1,0.8,0.6,0.4]
+               recipient.ruleset.garbage_messiness += 0.02
+               recipient.ruleset.garbage_messiness_per_floor = 0.05
+               recipient.ruleset.climb_xp_gain_methods.clear = false
+               recipient.ruleset.climb_xp_gain_methods.block = false
+               recipient.ruleset.climb_xp_loss_factor = 5
+               recipient.ruleset.instant_garbage_entry = true
+               recipient.garbage_received_mults.expert = 1.5
+               recipient.garbage_received_mults.your_taking_too_long = 1
+               recipient.ruleset.garbage_favour -= 33
+               recipient.ruleset.targeting_grace_release_time = [1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1]
+               recipient.ruleset.passive_altitude_gain = 0
+               recipient.ruleset.KO_altitude_gain = 8
+               recipient.remove_base_fatigue()
+               recipient.ruleset.fatigue.push(
+                  {time: 360, effect: (player) => {player.ruleset.targeting_grace_max_messiness_reduction = 0}, description: "YOUR POWER SLIPS… garbage received becomes messier"},
+                  {time: 420, effect: (player) => {player.garbage_received_mults.fatigue += 0.25}, description: "WHISPERS OF DISCONTENT SPREAD… receive 25% more garbage"},
+                  {time: 480, effect: (player) => {player.manual_delayed_injection(3, 0.8, "perma")}, description: "PROTESTERS LINE THE STREETS… +3 PERMANENT LINES"},
+                  {time: 540, effect: (player) => {player.garbage_received_mults.fatigue += 0.25}, description: "YOUR CLOSEST ALLIES DEFECT… receive 25% more garbage"},
+                  {time: 600, effect: (player) => {player.manual_delayed_injection(5, 0.8, "perma")}, description: "PARANOIA CLOUDS YOUR JUDGEMENT… +5 PERMANENT LINES"},
+                  {time: 660, effect: (player) => {player.ruleset.garbage_messiness = Math.max(1, player.ruleset.garbage_messiness)}, description: "THE REVOLUTION HAS BEGUN… garbage received becomes much messier"},
+                  {time: 720, effect: (player) => {player.manual_delayed_injection(12, 0.8, "perma")}, description: "THE END OF AN ERA. +12 PERMANENT LINES"},
+               )
+               recipient.enable_hard_mode()
+            }, priority: 0},
+            tick: {effect: (recipient, input) => {
+               let this_mod = mods[15]
+               recipient.altitude = Math.max(recipient.altitude - this_mod.altitude_loss[recipient.floor-1] * input.delta, recipient.ruleset.floor_tresholds[recipient.floor])
+               this_mod.time_on_floor += input.delta
+               if(this_mod.time_on_floor > 0) {
+                  recipient.garbage_received_mults.your_taking_too_long += this_mod.time_on_floor * 0.005
+                  this_mod.time_on_floor = 0
+               }
+               return input
+            }, priority: 0},
+            floor: {effect: (recipient, input) => {
+               let this_mod = mods[5]
+               this_mod.time_on_floor = -60
+            }, priority: 0}
+         },
+      ]
+      let modblocks = [
+         {normal: 0, reversed: 1, state: "normal", selected: false},{normal: 2, reversed: 3, state: "normal", selected: false},{normal: 4, reversed: 5, state: "normal", selected: false},
+         {normal: 6, reversed: 7, state: "normal", selected: false},{normal: 8, reversed: 9, state: "normal", selected: false},{normal: 10, reversed: 11, state: "normal", selected: false},
+         {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false}
+      ]
+      function rerender_mods(){
+         $("#available-mods,#selected-mods").empty()
+         modblocks.forEach((modblock,index) => {
+            let block = tag(120).addClass("modblock")
+            let modtext = tag().addClass("modtext")
+            let reverser = tag(30).html("&#x21BB;").addClass("reverser").on("click",(e) => {
+               e.stopPropagation()
+               modblocks[index].state = modblocks[index].state == "normal"? "reversed" : "normal"
+               if(modblock.state == "normal"){
+                  modtext.html(mods[modblock.normal].name.toUpperCase());
+                  block.css("background","linear-gradient(160deg, blue, cornflowerblue, blue)").css("color","white").css("transform","rotate(0deg)").css("text-shadow","none")
+                  modtext.css("transform","rotate(0deg)")
+               }
+               if(modblock.state == "reversed"){
+                  modtext.html(mods[modblock.reversed].name.toUpperCase());
+                  block.css("background","linear-gradient(160deg, red, lightsalmon, red)").css("color","black").css("text-shadow","0 0 4px red").css("transform","rotate(180deg)")
+                  modtext.css("transform","rotate(-180deg)")
+               }
+               block.css("font-size", Math.min(1.2, 10 / Math.max(...modtext.text().split(" ").map(word => word.length)))+"em")
+            })
+            if(modblock.state == "normal"){
+               modtext.html(mods[modblock.normal].name.toUpperCase());
+               block.css("background","linear-gradient(160deg, blue, cornflowerblue, blue)").css("color","white").css("transform","rotate(0deg)")
+               modtext.css("transform","rotate(0deg)")
+            }
+            if(modblock.state == "reversed"){
+               modtext.html(mods[modblock.reversed].name.toUpperCase());
+               block.css("background","linear-gradient(160deg, red, lightsalmon, red)").css("color","black").css("text-shadow","0 0 4px red").css("transform","rotate(180deg)")
+               modtext.css("transform","rotate(-180deg)")
+            }
+            block.append(reverser,modtext).css("font-size", Math.min(1.2, 10 / Math.max(...modtext.text().split(" ").map(word => word.length)))+"em").on("click", () => {
+               block.add($("#selected-mods p")).detach()
+               modblocks[index].selected = !modblocks[index].selected
+               if(modblocks[index].selected){
+                  $("#selected-mods").append(block)
+               }
+               else {
+                  $("#available-mods").append(block)
+               }
+               if(!document.querySelector("#selected-mods div")) $("#selected-mods").append("<p>NO MODS SELECTED</p>")
+            })
+            if(modblock.selected){
+               $("#selected-mods").append(block)
+            }
+            else {
+               $("#available-mods").append(block)
+            }
+         })
+         if(!document.querySelector("#selected-mods div")) $("#selected-mods").append("<p>NO MODS SELECTED</p>")
+      }
       function begin(){
          let contender = new player()
          tower.push(contender)
@@ -1784,14 +2493,16 @@
       function stop(){
          tower.forEach(board => window.clearInterval(board.update_timer))
       }
+      rerender_mods()
       let tower = []
-      for(let i = 0; i < 100; i+= 0.333){
-         window.setTimeout(()=>{tower.push(new fake_player(0.02 + Math.pow((i+0.2)/100,3) * 0.98))}, Math.random() * 500)
+      for(let i = 0; i < 300; i++){
+         window.setTimeout(()=>{tower.push(new fake_player(0.02 + Math.pow(i/300,3) * 0.98))}, Math.random() * 500)
       }
       window.setTimeout(()=>{
-         for(let i = 0; i < 200; i+=1){
+         for(let i = 0; i < 2000; i+=1){
             tower.forEach(player => {player.update()})
          }
+         console.log("extra_updates_done!!!")
       },500)
    </script>
 </body>
