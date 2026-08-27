@@ -227,7 +227,7 @@ let mods = [
          return input
       }, priority: 0},
       piece_spawn: {effect: (recipient, input) => {
-         while(recipient.board.filter(row => row.find(cell => cell.type == 2)).length < Math.min(4, recipient.current_board_dimensions.y - 2)) recipient.inject_garbage()
+         while(recipient.board.filter(row => row.find(cell => cell.type == 2)).length < Math.min(4, recipient.current_board_dimensions.y - 3)) recipient.inject_garbage()
          return input
       }, priority: 0}
    },
@@ -335,7 +335,7 @@ let mods = [
          recipient.enable_hard_mode()
          recipient.ruleset.gravity_increase = 0
          recipient.ruleset.minimum_action_text_opacity = 0.7
-         recipient.ruleset.btb_charging_starting_btb = 4
+         recipient.ruleset.btb_charging_starting_surge = 4
          recipient.ruleset.btb_chaining_thresholds = [1,4]
          mods[13].previous_amount = -2
          mods[13].garbo_curse = false
@@ -361,6 +361,12 @@ let mods = [
                recipient.action_text = "VOID"
                input.attacks = (recipient.combo >= 2)? Math.log(1 + 1.25 * this.combo) : 0
                if(input.pc > 0) input.attacks += (input.pc == 2)? recipient.ruleset.pc_attacks : recipient.ruleset.cc_attacks
+               recipient.btb = -1
+               if(recipient.powah > 0){
+                  recipient.create_attacks(recipient.powah, "starsurge")
+                  recipient.powah = 0
+                  input.dropped = true
+               }
             }
             else if(input.lines_cleared == 0 && (recipient.btb >= 4 || (recipient.mods.includes(9) && mods[9].blight))){
                input.attacks = 1 + (recipient.btb > 0)? 1 : 0
@@ -450,8 +456,66 @@ let mods = [
          return input
       }, priority: 0},
       floor: {effect: (recipient, input) => {
-         let this_mod = mods[5]
+         let this_mod = mods[15]
          this_mod.time_on_floor = -60
+      }, priority: 0}
+   },
+   {
+      name: "snowball board",
+      line_counter: 0,
+      dimensions: 4,
+      start: {effect: (recipient, input) => {
+         let this_mod = mods[16]
+         this_mod.dimensions = 4
+         this_mod.line_counter = 0
+         recipient.ruleset.board_dimensions = new vector(4,4)
+         recipient.recalculate_board_dimensions() 
+      }, priority: 0},
+      placed: {effect: (recipient, input) => {
+         let this_mod = mods[16]
+         this_mod.line_counter += input.lines_cleared
+         if(this_mod.line_counter >= 20 && this_mod.dimensions < 20){
+            this_mod.dimensions++
+            this_mod.line_counter -= 20
+            recipient.ruleset.board_dimensions = new vector(this_mod.dimensions, this_mod.dimensions)
+            recipient.recalculate_board_dimensions()
+         }
+         return input
+      }, priority: 0},
+      render: {effect: (recipient, input) => {
+         if(mods[16].dimensions < 20) $("#mod-16-name").html("SNOWBALL BOARD " + mods[16].line_counter + "/20")
+         return input
+      }, priority: 0}
+   },
+   {
+      name: "permafrost board",
+      line_counter: 0,
+      dimensions: 4,
+      start: {effect: (recipient, input) => {
+         let this_mod = mods[17]
+         this_mod.dimensions = 4
+         this_mod.line_counter = 0
+         recipient.ruleset.board_dimensions = new vector(4,4)
+         recipient.recalculate_board_dimensions()
+         recipient.ruleset.DAS = 0.003333
+         recipient.ruleset.ARR = 0.003333
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+      }, priority: 0},
+      placed: {effect: (recipient, input) => {
+         let this_mod = mods[17]
+         this_mod.line_counter += input.lines_cleared
+         if(this_mod.line_counter >= 20 && this_mod.dimensions < 20){
+            this_mod.dimensions++
+            this_mod.line_counter -= 20
+            recipient.ruleset.board_dimensions = new vector(this_mod.dimensions, this_mod.dimensions)
+            recipient.recalculate_board_dimensions()
+         }
+         return input
+      }, priority: 0},
+      render: {effect: (recipient, input) => {
+         if(mods[17].dimensions < 20) $("#mod-17-name").html("PERMAFROST BOARD " + mods[17].line_counter + "/20")
+         return input
       }, priority: 0}
    },
 ]

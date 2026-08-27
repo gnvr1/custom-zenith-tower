@@ -105,7 +105,10 @@ class player {
       barrier_skip_actions: ["line_clear", "garbage_send", "garbage_block"],
       floor_cross_altitude: 3,
       windup_threshold: 8,
-      windup_maximum_attack: 16
+      windup_maximum_attack: 16,
+      DAS: settings.handling.DAS,
+      ARR: settings.handling.ARR,
+      SDF: settings.handling.SDF
    }
    current_board_dimensions = this.ruleset.board_dimensions.scale(1)
    board = []
@@ -189,8 +192,30 @@ class player {
       let target_board_dimensions = new vector(Math.max(4, this.ruleset.board_dimensions.x * this.ruleset.board_dimension_mults.x), Math.max(4, this.ruleset.board_dimensions.y * this.ruleset.board_dimension_mults.y))
       while(this.current_board_dimensions.x != target_board_dimensions.x){
          if(this.current_board_dimensions.x < target_board_dimensions.x){
-            if(this.current_board_dimensions.x % 2 == 0) this.board.forEach(row => row.unshift(new tile((row.find(cell => cell.type == 2))? 2 : 0)))
-            else this.board.forEach(row => row.push(new tile((row.find(cell => cell.type == 2))? 2 : 0)))
+            if(this.current_board_dimensions.x % 2 == 0){
+               this.board.forEach(row => {
+                  let new_tile = new tile(0)
+                  if(row.find(cell => cell.type == 2)) new_tile.type = 2
+                  if(row.find(cell => cell.type == 4)){
+                     new_tile.type = 4
+                     new_tile.subtype = {counter: row.find(cell => cell.type == 4).subtype.counter, post: [2,0]}
+                  }
+                  row.unshift(new_tile)
+               })
+               this.current_garbage_pattern.unshift(1)
+            }
+            else {
+               this.board.forEach(row => {
+                  let new_tile = new tile(0)
+                  if(row.find(cell => cell.type == 2)) new_tile.type = 2
+                  if(row.find(cell => cell.type == 4)){
+                     new_tile.type = 4
+                     new_tile.subtype = {counter: row.find(cell => cell.type == 4).subtype.counter, post: [2,0]}
+                  }
+                  row.push(new_tile)
+               })
+               this.current_garbage_pattern.push(1)
+            }
             this.current_board_dimensions.x++
          }
          else{
@@ -484,7 +509,7 @@ class player {
 
       this.piece_partial_movement += delta * (this.ruleset.gravity + this.ruleset.gravity_increase * this.time)
       if(inputs.includes("soft_dropheld")){
-         this.piece_partial_movement += delta * settings.handling.SDF
+         this.piece_partial_movement += delta * this.ruleset.SDF
       }
       while(this.piece_partial_movement >= 1){
          this.piece_position.y -= 1
@@ -505,13 +530,13 @@ class player {
       
       if(inputs.includes("leftheld") || inputs.includes("rightheld")) this.piece_as_time += delta
       else if(!inputs.includes("hard_drop") && !inputs.includes("hold")) this.piece_as_time = 0
-      while(this.piece_as_time >= settings.handling.DAS || inputs.includes("left") || inputs.includes("right")){
+      while(this.piece_as_time >= this.ruleset.DAS || inputs.includes("left") || inputs.includes("right")){
          inputs = inputs.filter(input => !(["right","left"].includes(input)))
-         this.piece_as_time = Math.max(this.piece_as_time - settings.handling.ARR, 0)
+         this.piece_as_time = Math.max(this.piece_as_time - this.ruleset.ARR, 0)
          this.piece_position.x += this.piece_direction
          if(this.piece_obstructed()){
             this.piece_position.x -= this.piece_direction
-            this.piece_as_time = settings.handling.DAS - settings.handling.ARR - 0.0001
+            this.piece_as_time = this.ruleset.DAS - this.ruleset.ARR - 0.0001
          }
          else {
             this.reset_lock_delay()
@@ -1010,6 +1035,7 @@ class player {
          while(garbage_entry_row > 0 && this.board[garbage_entry_row - 1][0].type == 4 && this.board[garbage_entry_row - 1][0].subtype.counter <= counter) garbage_entry_row--
       }
       let result = this.execute_mod_functions("garbage", {garbage_pattern: [...pattern]})
+      if(result.garbage_pattern.filter(cell => cell != 0).length == 0) result.garbage_pattern[Math.floor(Math.random() * result.garbage_pattern.length)] = 1
       for(let i = this.board.length - 1; i >= garbage_entry_row; i--){
          for(let j = 0; j < this.board[i].length; j++){
             if(this.board[i][j].type != 0){
@@ -1070,7 +1096,7 @@ class player {
       })
       columns.sort(() => 0.5 - Math.random())
       columns.sort((a, b) => a.difficulty-b.difficulty)
-      for(let i = 0; i < this.ruleset.garbage_well_amount; i++){
+      for(let i = 0; i < this.ruleset.garbage_well_amount && columns.length > 0; i++){
          let total_weight = 0
          columns.forEach((column, index) => {
             column.weight = Math.max(10 + ((ignore_stuff)? 0 : this.ruleset.garbage_favour) - index * ((ignore_stuff)? 0 : this.ruleset.garbage_favour) / 4.5, 0)

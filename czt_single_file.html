@@ -847,6 +847,9 @@
          floor_cross_altitude = 3
          windup_threshold = 8
          windup_maximum_attack = 16
+         DAS = settings.handling.DAS
+         ARR = settings.handling.ARR
+         SDF = settings.handling.SDF
       }
       class player {
          ruleset = new ruleset()
@@ -932,8 +935,30 @@
             let target_board_dimensions = new vector(Math.max(4, this.ruleset.board_dimensions.x * this.ruleset.board_dimension_mults.x), Math.max(4, this.ruleset.board_dimensions.y * this.ruleset.board_dimension_mults.y))
             while(this.current_board_dimensions.x != target_board_dimensions.x){
                if(this.current_board_dimensions.x < target_board_dimensions.x){
-                  if(this.current_board_dimensions.x % 2 == 0) this.board.forEach(row => row.unshift(new tile((row.find(cell => cell.type == 2))? 2 : 0)))
-                  else this.board.forEach(row => row.push(new tile((row.find(cell => cell.type == 2))? 2 : 0)))
+                  if(this.current_board_dimensions.x % 2 == 0){
+                     this.board.forEach(row => {
+                        let new_tile = new tile(0)
+                        if(row.find(cell => cell.type == 2)) new_tile.type = 2
+                        if(row.find(cell => cell.type == 4)){
+                           new_tile.type = 4
+                           new_tile.subtype = {counter: row.find(cell => cell.type == 4).subtype.counter, post: [2,0]}
+                        }
+                        row.unshift(new_tile)
+                     })
+                     this.current_garbage_pattern.unshift(1)
+                  }
+                  else {
+                     this.board.forEach(row => {
+                        let new_tile = new tile(0)
+                        if(row.find(cell => cell.type == 2)) new_tile.type = 2
+                        if(row.find(cell => cell.type == 4)){
+                           new_tile.type = 4
+                           new_tile.subtype = {counter: row.find(cell => cell.type == 4).subtype.counter, post: [2,0]}
+                        }
+                        row.push(new_tile)
+                     })
+                     this.current_garbage_pattern.push(1)
+                  }
                   this.current_board_dimensions.x++
                }
                else{
@@ -1227,7 +1252,7 @@
 
             this.piece_partial_movement += delta * (this.ruleset.gravity + this.ruleset.gravity_increase * this.time)
             if(inputs.includes("soft_dropheld")){
-               this.piece_partial_movement += delta * settings.handling.SDF
+               this.piece_partial_movement += delta * this.ruleset.SDF
             }
             while(this.piece_partial_movement >= 1){
                this.piece_position.y -= 1
@@ -1248,13 +1273,13 @@
 
             if(inputs.includes("leftheld") || inputs.includes("rightheld")) this.piece_as_time += delta
             else if(!inputs.includes("hard_drop") && !inputs.includes("hold")) this.piece_as_time = 0
-            while(this.piece_as_time >= settings.handling.DAS || inputs.includes("left") || inputs.includes("right")){
+            while(this.piece_as_time >= this.ruleset.DAS || inputs.includes("left") || inputs.includes("right")){
                inputs = inputs.filter(input => !(["right","left"].includes(input)))
-               this.piece_as_time = Math.max(this.piece_as_time - settings.handling.ARR, 0)
+               this.piece_as_time = Math.max(this.piece_as_time - this.ruleset.ARR, 0)
                this.piece_position.x += this.piece_direction
                if(this.piece_obstructed()){
                   this.piece_position.x -= this.piece_direction
-                  this.piece_as_time = settings.handling.DAS - settings.handling.ARR - 0.0001
+                  this.piece_as_time = this.ruleset.DAS - this.ruleset.ARR - 0.0001
                }
                else {
                   this.reset_lock_delay()
@@ -1622,7 +1647,6 @@
 
             let wait_time = (lines_cleared > 0)? this.ruleset.lc_are : 0
 
-
             result.cleared_indexes.forEach((yindex, index_index) => {
                this.board[yindex].forEach((cell, xindex) => {
                   if(wait_time <= 0.7 && wait_time > 0.25) this.clear_whites.push({position: new vector(xindex,yindex), animation: 0, time: 0, end_time: wait_time - 0.15})
@@ -1753,6 +1777,7 @@
                while(garbage_entry_row > 0 && this.board[garbage_entry_row - 1][0].type == 4 && this.board[garbage_entry_row - 1][0].subtype.counter <= counter) garbage_entry_row--
             }
             let result = this.execute_mod_functions("garbage", {garbage_pattern: [...pattern]})
+            if(result.garbage_pattern.filter(cell => cell != 0).length == 0) result.garbage_pattern[Math.floor(Math.random() * result.garbage_pattern.length)] = 1
             for(let i = this.board.length - 1; i >= garbage_entry_row; i--){
                for(let j = 0; j < this.board[i].length; j++){
                   if(this.board[i][j].type != 0){
@@ -1813,7 +1838,7 @@
             })
             columns.sort(() => 0.5 - Math.random())
             columns.sort((a, b) => a.difficulty-b.difficulty)
-            for(let i = 0; i < this.ruleset.garbage_well_amount; i++){
+            for(let i = 0; i < this.ruleset.garbage_well_amount && columns.length > 0; i++){
                let total_weight = 0
                columns.forEach((column, index) => {
                   column.weight = Math.max(10 + ((ignore_stuff)? 0 : this.ruleset.garbage_favour) - index * ((ignore_stuff)? 0 : this.ruleset.garbage_favour) / 4.5, 0)
@@ -2224,7 +2249,7 @@
                return input
             }, priority: 0},
             piece_spawn: {effect: (recipient, input) => {
-               while(recipient.board.filter(row => row.find(cell => cell.type == 2)).length < Math.min(4, recipient.current_board_dimensions.y - 2)) recipient.inject_garbage()
+               while(recipient.board.filter(row => row.find(cell => cell.type == 2)).length < Math.min(4, recipient.current_board_dimensions.y - 3)) recipient.inject_garbage()
                return input
             }, priority: 0}
          },
@@ -2332,7 +2357,7 @@
                recipient.enable_hard_mode()
                recipient.ruleset.gravity_increase = 0
                recipient.ruleset.minimum_action_text_opacity = 0.7
-               recipient.ruleset.btb_charging_starting_btb = 4
+               recipient.ruleset.btb_charging_starting_surge = 4
                recipient.ruleset.btb_chaining_thresholds = [1,4]
                mods[13].previous_amount = -2
                mods[13].garbo_curse = false
@@ -2358,6 +2383,12 @@
                      recipient.action_text = "VOID"
                      input.attacks = (recipient.combo >= 2)? Math.log(1 + 1.25 * this.combo) : 0
                      if(input.pc > 0) input.attacks += (input.pc == 2)? recipient.ruleset.pc_attacks : recipient.ruleset.cc_attacks
+                     recipient.btb = -1
+                     if(recipient.powah > 0){
+                        recipient.create_attacks(recipient.powah, "starsurge")
+                        recipient.powah = 0
+                        input.dropped = true
+                     }
                   }
                   else if(input.lines_cleared == 0 && (recipient.btb >= 4 || (recipient.mods.includes(9) && mods[9].blight))){
                      input.attacks = 1 + (recipient.btb > 0)? 1 : 0
@@ -2447,15 +2478,73 @@
                return input
             }, priority: 0},
             floor: {effect: (recipient, input) => {
-               let this_mod = mods[5]
+               let this_mod = mods[15]
                this_mod.time_on_floor = -60
+            }, priority: 0}
+         },
+         {
+            name: "snowball board",
+            line_counter: 0,
+            dimensions: 4,
+            start: {effect: (recipient, input) => {
+               let this_mod = mods[16]
+               this_mod.dimensions = 4
+               this_mod.line_counter = 0
+               recipient.ruleset.board_dimensions = new vector(4,4)
+               recipient.recalculate_board_dimensions() 
+            }, priority: 0},
+            placed: {effect: (recipient, input) => {
+               let this_mod = mods[16]
+               this_mod.line_counter += input.lines_cleared
+               if(this_mod.line_counter >= 20 && this_mod.dimensions < 20){
+                  this_mod.dimensions++
+                  this_mod.line_counter -= 20
+                  recipient.ruleset.board_dimensions = new vector(this_mod.dimensions, this_mod.dimensions)
+                  recipient.recalculate_board_dimensions()
+               }
+               return input
+            }, priority: 0},
+            render: {effect: (recipient, input) => {
+               if(mods[16].dimensions < 20) $("#mod-16-name").html("SNOWBALL BOARD " + mods[16].line_counter + "/20")
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "permafrost board",
+            line_counter: 0,
+            dimensions: 4,
+            start: {effect: (recipient, input) => {
+               let this_mod = mods[17]
+               this_mod.dimensions = 4
+               this_mod.line_counter = 0
+               recipient.ruleset.board_dimensions = new vector(4,4)
+               recipient.recalculate_board_dimensions()
+               recipient.ruleset.DAS = 0.003333
+               recipient.ruleset.ARR = 0.003333
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+            }, priority: 0},
+            placed: {effect: (recipient, input) => {
+               let this_mod = mods[17]
+               this_mod.line_counter += input.lines_cleared
+               if(this_mod.line_counter >= 20 && this_mod.dimensions < 20){
+                  this_mod.dimensions++
+                  this_mod.line_counter -= 20
+                  recipient.ruleset.board_dimensions = new vector(this_mod.dimensions, this_mod.dimensions)
+                  recipient.recalculate_board_dimensions()
+               }
+               return input
+            }, priority: 0},
+            render: {effect: (recipient, input) => {
+               if(mods[17].dimensions < 20) $("#mod-17-name").html("PERMAFROST BOARD " + mods[17].line_counter + "/20")
+               return input
             }, priority: 0}
          },
       ]
       let modblocks = [
          {normal: 0, reversed: 1, state: "normal", selected: false},{normal: 2, reversed: 3, state: "normal", selected: false},{normal: 4, reversed: 5, state: "normal", selected: false},
          {normal: 6, reversed: 7, state: "normal", selected: false},{normal: 8, reversed: 9, state: "normal", selected: false},{normal: 10, reversed: 11, state: "normal", selected: false},
-         {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false}
+         {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false},{normal: 16, reversed: 17, state: "normal", selected: false}
       ]
       function rerender_mods(){
          $("#available-mods,#selected-mods").empty()
@@ -2475,7 +2564,7 @@
                   block.css("background","linear-gradient(160deg, red, lightsalmon, red)").css("color","black").css("text-shadow","0 0 4px red").css("transform","rotate(180deg)")
                   modtext.css("transform","rotate(-180deg)")
                }
-               block.css("font-size", Math.min(1.2, 10 / Math.max(...modtext.text().split(" ").map(word => word.length)))+"em")
+               block.css("font-size", Math.min(1.2, 9 / Math.max(...modtext.text().split(" ").map(word => word.length)))+"em")
             })
             if(modblock.state == "normal"){
                modtext.html(mods[modblock.normal].name.toUpperCase());
@@ -2487,7 +2576,7 @@
                block.css("background","linear-gradient(160deg, red, lightsalmon, red)").css("color","black").css("text-shadow","0 0 4px red").css("transform","rotate(180deg)")
                modtext.css("transform","rotate(-180deg)")
             }
-            block.append(reverser,modtext).css("font-size", Math.min(1.2, 10 / Math.max(...modtext.text().split(" ").map(word => word.length)))+"em").on("click", () => {
+            block.append(reverser,modtext).css("font-size", Math.min(1.2, 9 / Math.max(...modtext.text().split(" ").map(word => word.length)))+"em").on("click", () => {
                block.add($("#selected-mods p")).detach()
                modblocks[index].selected = !modblocks[index].selected
                if(modblocks[index].selected){
