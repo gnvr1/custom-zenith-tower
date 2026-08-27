@@ -45,6 +45,9 @@ const settings = {
       rot_180: "KeyA",
       rot_ccw: "KeyZ",
       hold: "ShiftLeft",
+   },
+   other: {
+      fakeamount: 300
    }
 }
 let edited_control = undefined
@@ -66,6 +69,9 @@ function show_settings(){
          $("#"+key+"-input").css("outline","white solid 4px")
       })
    })
+   Object.keys(settings.other).forEach(key => {
+      $("#"+key+"-input").val(settings.other[key])
+   })
    document.getElementsByTagName("dialog")[0].showModal()
 }
 function hide_settings(save){
@@ -76,6 +82,10 @@ function hide_settings(save){
       Object.keys(settings.controls).forEach(key => {
          settings.controls[key] = $("#"+key+"-input").html()
       })
+      Object.keys(settings.other).forEach(key => {
+         settings.other[key] = Number.isNaN(parseInt($("#"+key+"-input").val()))? 1 : parseInt($("#"+key+"-input").val())
+      })
+      refill_tower()
    }
    document.getElementsByTagName("dialog")[0].close()
 }
@@ -112,12 +122,19 @@ function stop(){
    tower.forEach(board => window.clearInterval(board.update_timer))
 }
 let tower = []
-for(let i = 0; i < 300; i++){
-   window.setTimeout(()=>{tower.push(new fake_player(0.02 + Math.pow(i/300,3) * 0.98))}, Math.random() * 500)
-}
-window.setTimeout(()=>{
+function refill_tower(){
+   tower = []
+   for(let i = 0; i < settings.other.fakeamount; i++){
+      let new_contender = new fake_player(0.02 + Math.pow(i/settings.other.fakeamount,5) * 0.98)
+      tower.push(new_contender)
+   }
    for(let i = 0; i < 2000; i+=1){
       tower.forEach(player => {player.update()})
    }
+   tower.forEach(player => {
+      window.clearInterval(player.update_timer)
+      window.setTimeout(() => {player.update_timer = window.setInterval(() => {player.update()}, 500)}, Math.random() * 500)
+   })
    console.log("extra_updates_done!!!")
-},500)
+}
+refill_tower()

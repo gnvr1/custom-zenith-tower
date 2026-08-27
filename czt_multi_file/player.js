@@ -496,10 +496,12 @@ class player {
          else this.piece_spinnin = 0
       }
 
+      let old_direction = this.piece_direction
       if(inputs.includes("left")) this.piece_direction = -1
       else if(inputs.includes("right")) this.piece_direction = 1
       else if(inputs.includes("leftheld") && !inputs.includes("rightheld")) this.piece_direction = -1
       else if(inputs.includes("rightheld") && !inputs.includes("leftheld")) this.piece_direction = 1
+      if(this.piece_direction != old_direction) this.piece_as_time = 0
       
       if(inputs.includes("leftheld") || inputs.includes("rightheld")) this.piece_as_time += delta
       else if(!inputs.includes("hard_drop") && !inputs.includes("hold")) this.piece_as_time = 0
