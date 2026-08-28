@@ -9,6 +9,7 @@ class tile {
       if(this.type == 2) return "darkgray"
       if(this.type == 3) return "#555"
       if(this.type == 4) return "indigo"
+      if(this.type == 5) return "firebrick"
    }
 }
 class piece {
@@ -52,13 +53,14 @@ class piece {
       }
       let html = tag().css("position", "relative").css("scale", scale).css("filter",filter)
       this.tile_positions.forEach((mino,index) => {
-         html.append(tag(other_mino_size)
+         let block = tag(other_mino_size)
             .addClass("shown-mino border-outset")
             .css("top", (-mino.y-0.5+avg.y) * other_mino_size)
             .css("left", (mino.x-avg.x-0.5) * other_mino_size)
             .css("--bgcolor", this.tile_type[index].tile_render_info())
             .css("border-width", 2)
-         )
+         if(this.tile_type[index].type == 5) block.html("&#x2622;").css("font-size", other_mino_size).css("color", this.tile_type[index].subtype.primed? "yellow" : "maroon").css("text-shadow","none").css("line-height","1")
+         html.append(block)
       })
       return html
    }

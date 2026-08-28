@@ -272,7 +272,7 @@ let mods = [
                cell.opacity -= Math.min(cell.opacity, 3 * input.delta)
                cell.opacity = Math.min(1, Math.max(0, cell.opacity))
             }
-            if(cell.type == 2){
+            if([2,5].includes(cell.type)){
                let garbage_rows = recipient.board.filter(row => row.find(cell => cell.type == 2))
                garbage_rows = garbage_rows.slice(garbage_rows.length - 3)
                cell.opacity = ((garbage_rows.findIndex(a_row => a_row == row) + 1) + 3 - Math.min(3, garbage_rows.length)) / 3 - 0.1
@@ -515,6 +515,116 @@ let mods = [
       }, priority: 0},
       render: {effect: (recipient, input) => {
          if(mods[17].dimensions < 20) $("#mod-17-name").html("PERMAFROST BOARD " + mods[17].line_counter + "/20")
+         return input
+      }, priority: 0}
+   },
+   {
+      name: "backfire",
+      sent: {effect: (recipient, input) => {
+         let backfire_amount = input.amount * 0.75
+         if(backfire_amount % 1 != 0){
+            if(Math.random() < backfire_amount - parseInt(backfire_amount)) backfire_amount += 1
+            backfire_amount = parseInt(backfire_amount)
+         }
+         if(backfire_amount >= recipient.ruleset.windup_threshold) recipient.windups.push({chunks: backfire_amount, time: 0, chunk_amount: 0})
+         else if(backfire_amount >= 1) recipient.garbage_queue.push({size: backfire_amount, time_in_queue: recipient.ruleset.garbage_entry_delay[recipient.floor-1]-0.5})
+         return input
+      }, priority: 0}
+   },
+   {
+      name: "reckoning",
+      stored_attacks: 0,
+      start: {effect: (recipient, input) => {
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+         recipient.ruleset.floor_barriers = false
+         recipient.ruleset.floor_cross_altitude = 0
+         recipient.ruleset.KO_altitude_gain = 0
+         recipient.ruleset.climb_xp_gain_methods.block = false
+         if(!recipient.mods.includes(15)) recipient.ruleset.passive_altitude_gain = 0.5
+         mods[19].stored_attacks = 0
+      }, priority: 0},
+      sent: {effect: (recipient, input) => {
+         mods[19].stored_attacks += 0.3 * input.amount
+         let backfire_amount = input.amount
+         if(backfire_amount >= recipient.ruleset.windup_threshold) recipient.windups.push({chunks: backfire_amount, time: 0, chunk_amount: 0})
+         else if(backfire_amount >= 1) recipient.garbage_queue.push({size: backfire_amount, time_in_queue: recipient.ruleset.garbage_entry_delay[recipient.floor-1]-0.5})
+         return input
+      }, priority: 0},
+      region: {effect: (recipient, input) => {
+         let this_mod = mods[19]
+         this_mod.stored_attacks = parseInt(this_mod.stored_attacks)
+         if(this_mod.stored_attacks >= recipient.ruleset.windup_threshold){
+            while(this_mod.stored_attacks > 0){
+               recipient.windups.push({chunks: Math.min(this_mod.stored_attacks, recipient.ruleset.windup_maximum_attack), time: 0, chunk_amount: 0})
+               this_mod.stored_attacks -= Math.min(this_mod.stored_attacks, recipient.ruleset.windup_maximum_attack)
+            }
+         }
+         else if(this_mod.stored_attacks >= 1) recipient.garbage_queue.push({size: this_mod.stored_attacks, time_in_queue: 0})
+         this_mod.stored_attacks = 0
+      }, priority: 0},
+      render: {effect: (recipient, input) => {
+         if(mods[19].stored_attacks >= 1) $("#mod-19-name").html("RECKONING <span style='color:orange;'>&#x26A0; " + Math.floor(mods[19].stored_attacks) + " &#x26A0;</span>")
+         return input
+      }, priority: 0}
+   },
+   {
+      name: "bomb garbage",
+      start: {effect: (recipient, input) => {
+         recipient.garbage_received_mults.bombs = 1.5
+         recipient.ruleset.targeting_grace_mult *= 0.67
+         recipient.ruleset.garbage_messiness += 0.05
+      }, priority: 0},
+      garbage: {effect: (recipient, input) => {
+         input.garbage_pattern = input.garbage_pattern.map(type => type == 0? 2 : type)
+         return input
+      }, priority: -2}
+   },
+   {
+      name: "duality",
+      bomb_pattern: [],
+      bomb_pattern_change_chance: [0.1,0.14,0.18,0.22,0.26,0.3,0.34,0.38,0.42,0.46],
+      start: {effect: (recipient, input) => {
+         let this_mod = mods[21]
+         this_mod.bomb_pattern = []
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+         recipient.garbage_received_mults.bombs = 1.5
+         recipient.ruleset.targeting_grace_mult *= 0.67
+         recipient.ruleset.garbage_messiness += 0.05
+         recipient.ruleset.garbage_well_amount++
+         recipient.ruleset.garbage_line_protection_max_stacks = 5
+      }, priority: -2},
+      garbage: {effect: (recipient, input) => {
+         let this_mod = mods[21]
+         let pattern = input.garbage_pattern.map((column, index) => column == 0? index : undefined).filter(column => column != undefined)
+         pattern.sort(() => Math.random() - 0.5)
+         let chosen_columns = []
+         if(Math.random() > this_mod.bomb_pattern_change_chance[recipient.floor-1]){
+            chosen_columns = chosen_columns.concat(this_mod.bomb_pattern.filter(col => pattern.includes(col)))
+         }
+         let target_amount = pattern.length/2
+         if(target_amount % 1 != 0){
+            if(Math.random() < 0.5) target_amount++
+            target_amount -= 0.5
+         }
+         while(chosen_columns.length < target_amount){
+            chosen_columns.push(pattern.pop())
+         }
+         chosen_columns.sort(() => Math.random() - 0.5)
+         while(chosen_columns.length > target_amount){
+            chosen_columns.pop()
+         }
+         chosen_columns.forEach(col => input.garbage_pattern[col] = 2)
+         this_mod.bomb_pattern = chosen_columns
+         return input
+      }, priority: -2},
+      piece_created: {effect: (recipient, input) => {
+         let index = Math.floor(Math.random() * input.new_piece.tile_type.length)
+         console.log(index)
+         let after = [input.new_piece.tile_type[index].type, input.new_piece.tile_type[index].subtype]
+         input.new_piece.tile_type[index].type = 5
+         input.new_piece.tile_type[index].subtype = {primed: false, post: after}
          return input
       }, priority: 0}
    },

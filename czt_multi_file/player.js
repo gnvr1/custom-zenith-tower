@@ -151,7 +151,7 @@ class player {
    current_region_threshold = this.ruleset.shorter_region_tresholds.shift()
    garbage_received_boosts = {}
    garbage_received_mults = {fatigue: 1}
-   targeting_grace = 0
+   targeting_grace = 5
    targeting_grace_last_released = Date.now()
    clear_text = ""
    combo = -1
@@ -301,8 +301,9 @@ class player {
                else if(pos.add(this.piece_position).add(new vector(0,-this.ghost_piece_offset)).is_equal(new vector(cell_index, row_index)) && cell.type == 0 && this.ruleset.ghost_piece && !this.piece_placed) {cell = this.controlled_piece.tile_type[pos_index]; new_cell.css("filter", "opacity(60%) blur(2px)")}
             })
             new_cell.css("background", cell.tile_render_info()).css("opacity", cell.opacity)
-            if(cell.type >= 1 && cell.type <= 3) new_cell.css("--bgcolor", cell.tile_render_info()).css("border-width",2).addClass("border-outset")
-            if(cell.type == 4 && cell.subtype.post[0] == 0) new_cell.text(cell.subtype.counter).css("color","white")
+            if(cell.type >= 1 && cell.type != 4) new_cell.css("--bgcolor", cell.tile_render_info()).css("border-width",2).addClass("border-outset")
+            if(cell.type == 4 && [0,5].includes(cell.subtype.post[0])) new_cell.text(cell.subtype.counter).css("color","white").css("font-size", board_mino_size * scalar / 1.5)
+            if(cell.type == 5) new_cell.html("&#x2622;").css("font-size", board_mino_size * scalar).css("color", cell.subtype.primed? "yellow" : "maroon").css("text-shadow","none").css("line-height","1")
             row_tag.append(new_cell)
          })
          center.append(row_tag)
@@ -334,7 +335,7 @@ class player {
       }
       center.append(pc_text)
 
-      let right = tag().addClass("column").css("align-items","flex-start").css("justify-content","flex-start")
+      let right = tag(other_mino_size*6,"default").addClass("column").css("align-items","flex-start").css("justify-content","flex-start")
       let queue_display
       if(this.ruleset.queue_size > 0){
          queue_display = tag(border_width + other_mino_size * 5.5, 2 * border_width + other_mino_size * (2.75 * this.ruleset.queue_size + 0.75))
@@ -342,9 +343,9 @@ class player {
          for(let i = 0; i < this.ruleset.queue_size; i++) queue_display.append(this.queue[i].rendered_tag())
       }
       else queue_display = tag(3,3)
-      let mod_names = tag().css("margin",5).addClass("column").css("text-align","left").css("align-items","flex-start")
+      let mod_names = tag().css("margin",5).addClass("column").css("text-align","left").css("align-items","flex-start").css("white-space","nowrap")
       this.mods.forEach(mod => {
-         let name = tag().html(mods[mod].name.toUpperCase()).attr("id","mod-"+mod+"-name").css("color","white")
+         let name = tag().html(mods[mod].name.toUpperCase()).attr("id","mod-"+mod+"-name").css("color","white").css("display","block")
          mod_names.append(name)
       })
       right.append(queue_display, mod_names)
@@ -691,7 +692,9 @@ class player {
       if(!piece){
          this.controlled_piece = this.queue.shift()
          if(this.queue.length < this.ruleset.queue_size + 1) {
-            this.queue.push(this.get_piece(this.bag.pop()))
+            let new_piece = this.get_piece(this.bag.pop())
+            let result = this.execute_mod_functions("piece_created",{new_piece})
+            this.queue.push(result.new_piece)
             if(this.bag.length <= this.ruleset.bag_refresh_at) {
                this.bag = [...this.ruleset.bag]
                this.bag.sort(() => 0.5 - Math.random())
@@ -744,6 +747,7 @@ class player {
       let garbage_cleared = 0
       let attacks = 0
       let pc = 0
+      this.bomb_update()
       this.board.forEach((row, yindex) => {
          let flag = !row.find(cell => cell.type == 0 || cell.type > 2)
          if(flag){
@@ -918,15 +922,16 @@ class player {
    }
    update_clears_and_continue(cleared_indexes){
       if(cleared_indexes.length > 0){
-            let amount = 0
-            this.board.forEach((row, yindex) => {
-               if(!cleared_indexes.includes(yindex)) row.forEach((cell, xindex) => {
-                  this.board[yindex][xindex] = new tile(0)
-                  this.board[yindex - amount][xindex] = cell
-               })
-               else amount++
+         let amount = 0
+         this.board.forEach((row, yindex) => {
+            if(!cleared_indexes.includes(yindex)) row.forEach((cell, xindex) => {
+               this.board[yindex][xindex] = new tile(0)
+               this.board[yindex - amount][xindex] = cell
             })
-         }
+            else amount++
+         })
+         this.bomb_update()
+      }
       this.spawn_piece()
    }
    create_attacks(amount, type = "normal"){
@@ -970,9 +975,10 @@ class player {
          if(this.separate_garbage[0] < 0) this.separate_garbage[0] = 0
       }
       if(amount) {
-         let stars = [amount, 0, 0]
+         let result = this.execute_mod_functions("sent", {amount, type})
+         let stars = [result.amount, 0, 0]
          let treshold = 15
-         if(type == "starsurge") treshold = 40
+         if(result.type == "starsurge") treshold = 40
          while(stars[0] + stars[1] >= treshold && stars[0] >= 10){
             stars[0] -= 10
             stars[1]++
@@ -987,9 +993,9 @@ class player {
             stars[stars.length-1]--
             while(stars[stars.length-1] == 0) stars.pop()
          }
-         if(this.ruleset.climb_xp_gain_methods.send) this.climb_xp += (amount + 0.05) * this.ruleset.climb_xp_gain_mult
-         this.attacks_sent += amount
-         send_attacks(this, amount)
+         if(this.ruleset.climb_xp_gain_methods.send) this.climb_xp += (result.amount + 0.05) * this.ruleset.climb_xp_gain_mult
+         this.attacks_sent += result.amount
+         send_attacks(this, result.amount)
       }
 
       if(this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 2 && this.ruleset.floor_barriers){
@@ -1017,6 +1023,22 @@ class player {
          return !flag
       })
    }
+   bomb_update(){
+      for(let yindex = this.board.length-1; yindex >= 0; yindex--){
+         this.board[yindex].forEach((cell,xindex) => {
+            if(cell.type == 5 && cell.subtype.primed && (yindex == this.board.length-1 || [1,2].includes(this.board[yindex+1][xindex].type))){this.board[yindex][xindex].type = cell.subtype.post[0]; this.board[yindex][xindex].subtype = cell.subtype.post[1]}
+            else if(cell.type == 5) console.log(cell.subtype.primed, yindex == this.board.length-1, [1,2].includes(this.board[yindex+1][xindex].type))
+         })
+      }
+      for(let yindex = this.board.length-1; yindex >= 0; yindex--){
+         this.board[yindex].forEach((cell,xindex) => {
+            if(cell.type == 5 && !cell.subtype.primed && (yindex == this.board.length-1 || this.board[yindex+1][xindex].type == 0 || (this.board[yindex+1][xindex].type == 5 && this.board[yindex+1][xindex].subtype.primed))){
+               cell.subtype.primed = true
+            }
+            else if(cell.type == 5) console.log(!cell.subtype.primed, yindex == this.board.length-1, this.board[yindex][xindex].type == 0)
+         })
+      }
+   }
    new_floor(){
       this.floor++
       this.bonus_altitude += this.ruleset.floor_cross_altitude * this.ruleset.altitude_mult
@@ -1026,7 +1048,7 @@ class player {
       this.execute_mod_functions("region")
    }
    new_region(){
-
+      this.execute_mod_functions("region")
    }
    inject_garbage(new_attack = true, messiness = this.ruleset.garbage_messiness, type = "normal", counter = 10, override_pattern = undefined){
       let pattern = override_pattern ?? this.current_garbage_pattern
@@ -1051,8 +1073,10 @@ class player {
          if(type == "perma") this.board[garbage_entry_row][i] = new tile(3)
          else if(result.garbage_pattern[i] == 0) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[0,0]}) : new tile(0)
          else if(result.garbage_pattern[i] == 1) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[2,0]}) : new tile(2)
+         else if(result.garbage_pattern[i] == 2) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[5,{primed: false, post: [2,0]}]}) : new tile(5,{primed: false, post: [2,0]})
       }
       if(type == "perma" || type == "wound") this.garbage_entry_row++
+      else this.bomb_update()
       if(this.piece_obstructed()) this.piece_position.y++
 
       messiness -= Math.min(1, this.targeting_grace / this.ruleset.targeting_grace_effective_max) * this.ruleset.targeting_grace_max_messiness_reduction
@@ -1155,14 +1179,16 @@ class player {
       this.execute_mod_functions("new_garbage_pattern")
       this.bag.sort(() => 0.5 - Math.random())
       while(this.queue.length < this.ruleset.queue_size + 3){
-         this.queue.push(this.get_piece(this.bag.pop()))
+         let new_piece = this.get_piece(this.bag.pop())
+         let result = this.execute_mod_functions("piece_created",{new_piece})
+         this.queue.push(result.new_piece)
          if(this.bag.length <= this.ruleset.bag_refresh_at){
             this.bag = [...this.ruleset.bag]
             this.bag.sort(() => 0.5 - Math.random())
          }
       }
       this.hold_cooldown = this.ruleset.hold_cooldown >= 0? 0 : -1
-      $("body").css("overflow", "hidden")
+      $("body").css("overflow", "hidden").css("padding-bottom",0)
       $("#board").css("display","flex").css("scale",1)
       $("#background").css("display","flex")
       $("#background").css("opacity",1)

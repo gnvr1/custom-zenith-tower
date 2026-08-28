@@ -27,6 +27,7 @@
          flex-direction: column;
          background: black;
          width: 100%;
+         padding-bottom: 40px;
       }
       .big{
          font-size: 1.6em;
@@ -189,6 +190,7 @@
          color: white;
          text-align: center;
          font-size: 6em;
+         margin-bottom: 25px;
       }
       h2{
          color: hsl(170, 70%, 65%);
@@ -559,7 +561,7 @@
             })
             let index = tower.findIndex(player => player === sender)
             weights[index] = 0
-            weights.forEach((p, p_index) => {if(Math.abs(sender.altitude - tower[p_index].altitude) > 15){weights[p_index] *= Math.max(0.01, 1/Math.pow(1.01, Math.abs(sender.altitude - tower[p_index].altitude)-15))}})
+            weights.forEach((p, p_index) => {if(Math.abs(sender.altitude - tower[p_index].altitude) > 15){weights[p_index] *= Math.max(0.05, 1/Math.pow(1.01, Math.abs(sender.altitude - tower[p_index].altitude)-15))}})
             let targeting_value = Math.random() * weights.reduce((sum, weight) => sum += weight, 0)
             let temp = targeting_value
             let final_index = -1
@@ -643,7 +645,7 @@
                   $("#background").css("display","none")
                   rerender_mods()
                   $("#menu").css("display","flex")
-                  $("body").css("overflow","auto")
+                  $("body").css("overflow","auto").css("padding-bottom", 40)
                   $("#board").css("display","none")
                })
             },1100)
@@ -660,6 +662,7 @@
             if(this.type == 2) return "darkgray"
             if(this.type == 3) return "#555"
             if(this.type == 4) return "indigo"
+            if(this.type == 5) return "firebrick"
          }
       }
       const tier_mults = [0,1,3,10]
@@ -729,13 +732,14 @@
             }
             let html = tag().css("position", "relative").css("scale", scale).css("filter",filter)
             this.tile_positions.forEach((mino,index) => {
-               html.append(tag(other_mino_size)
+               let block = tag(other_mino_size)
                   .addClass("shown-mino border-outset")
                   .css("top", (-mino.y-0.5+avg.y) * other_mino_size)
                   .css("left", (mino.x-avg.x-0.5) * other_mino_size)
                   .css("--bgcolor", this.tile_type[index].tile_render_info())
                   .css("border-width", 2)
-               )
+               if(this.tile_type[index].type == 5) block.html("&#x2622;").css("font-size", other_mino_size).css("color", this.tile_type[index].subtype.primed? "yellow" : "maroon").css("text-shadow","none").css("line-height","1")
+               html.append(block)
             })
             return html
          }
@@ -894,7 +898,7 @@
          current_region_threshold = this.ruleset.shorter_region_tresholds.shift()
          garbage_received_boosts = {}
          garbage_received_mults = {fatigue: 1}
-         targeting_grace = 0
+         targeting_grace = 5
          targeting_grace_last_released = Date.now()
          clear_text = ""
          combo = -1
@@ -1044,8 +1048,9 @@
                      else if(pos.add(this.piece_position).add(new vector(0,-this.ghost_piece_offset)).is_equal(new vector(cell_index, row_index)) && cell.type == 0 && this.ruleset.ghost_piece && !this.piece_placed) {cell = this.controlled_piece.tile_type[pos_index]; new_cell.css("filter", "opacity(60%) blur(2px)")}
                   })
                   new_cell.css("background", cell.tile_render_info()).css("opacity", cell.opacity)
-                  if(cell.type >= 1 && cell.type <= 3) new_cell.css("--bgcolor", cell.tile_render_info()).css("border-width",2).addClass("border-outset")
-                  if(cell.type == 4 && cell.subtype.post[0] == 0) new_cell.text(cell.subtype.counter).css("color","white")
+                  if(cell.type >= 1 && cell.type != 4) new_cell.css("--bgcolor", cell.tile_render_info()).css("border-width",2).addClass("border-outset")
+                  if(cell.type == 4 && [0,5].includes(cell.subtype.post[0])) new_cell.text(cell.subtype.counter).css("color","white").css("font-size", board_mino_size * scalar / 1.5)
+                  if(cell.type == 5) new_cell.html("&#x2622;").css("font-size", board_mino_size * scalar).css("color", cell.subtype.primed? "yellow" : "maroon").css("text-shadow","none").css("line-height","1")
                   row_tag.append(new_cell)
                })
                center.append(row_tag)
@@ -1077,7 +1082,7 @@
             }
             center.append(pc_text)
 
-            let right = tag().addClass("column").css("align-items","flex-start").css("justify-content","flex-start")
+            let right = tag(other_mino_size*6,"default").addClass("column").css("align-items","flex-start").css("justify-content","flex-start")
             let queue_display
             if(this.ruleset.queue_size > 0){
                queue_display = tag(border_width + other_mino_size * 5.5, 2 * border_width + other_mino_size * (2.75 * this.ruleset.queue_size + 0.75))
@@ -1085,9 +1090,9 @@
                for(let i = 0; i < this.ruleset.queue_size; i++) queue_display.append(this.queue[i].rendered_tag())
             }
             else queue_display = tag(3,3)
-            let mod_names = tag().css("margin",5).addClass("column").css("text-align","left").css("align-items","flex-start")
+            let mod_names = tag().css("margin",5).addClass("column").css("text-align","left").css("align-items","flex-start").css("white-space","nowrap")
             this.mods.forEach(mod => {
-               let name = tag().html(mods[mod].name.toUpperCase()).attr("id","mod-"+mod+"-name").css("color","white")
+               let name = tag().html(mods[mod].name.toUpperCase()).attr("id","mod-"+mod+"-name").css("color","white").css("display","block")
                mod_names.append(name)
             })
             right.append(queue_display, mod_names)
@@ -1434,7 +1439,9 @@
             if(!piece){
                this.controlled_piece = this.queue.shift()
                if(this.queue.length < this.ruleset.queue_size + 1) {
-                  this.queue.push(this.get_piece(this.bag.pop()))
+                  let new_piece = this.get_piece(this.bag.pop())
+                  let result = this.execute_mod_functions("piece_created",{new_piece})
+                  this.queue.push(result.new_piece)
                   if(this.bag.length <= this.ruleset.bag_refresh_at) {
                      this.bag = [...this.ruleset.bag]
                      this.bag.sort(() => 0.5 - Math.random())
@@ -1487,6 +1494,7 @@
             let garbage_cleared = 0
             let attacks = 0
             let pc = 0
+            this.bomb_update()
             this.board.forEach((row, yindex) => {
                let flag = !row.find(cell => cell.type == 0 || cell.type > 2)
                if(flag){
@@ -1660,15 +1668,16 @@
          }
          update_clears_and_continue(cleared_indexes){
             if(cleared_indexes.length > 0){
-                  let amount = 0
-                  this.board.forEach((row, yindex) => {
-                     if(!cleared_indexes.includes(yindex)) row.forEach((cell, xindex) => {
-                        this.board[yindex][xindex] = new tile(0)
-                        this.board[yindex - amount][xindex] = cell
-                     })
-                     else amount++
+               let amount = 0
+               this.board.forEach((row, yindex) => {
+                  if(!cleared_indexes.includes(yindex)) row.forEach((cell, xindex) => {
+                     this.board[yindex][xindex] = new tile(0)
+                     this.board[yindex - amount][xindex] = cell
                   })
-               }
+                  else amount++
+               })
+               this.bomb_update()
+            }
             this.spawn_piece()
          }
          create_attacks(amount, type = "normal"){
@@ -1712,9 +1721,10 @@
                if(this.separate_garbage[0] < 0) this.separate_garbage[0] = 0
             }
             if(amount) {
-               let stars = [amount, 0, 0]
+               let result = this.execute_mod_functions("sent", {amount, type})
+               let stars = [result.amount, 0, 0]
                let treshold = 15
-               if(type == "starsurge") treshold = 40
+               if(result.type == "starsurge") treshold = 40
                while(stars[0] + stars[1] >= treshold && stars[0] >= 10){
                   stars[0] -= 10
                   stars[1]++
@@ -1729,9 +1739,9 @@
                   stars[stars.length-1]--
                   while(stars[stars.length-1] == 0) stars.pop()
                }
-               if(this.ruleset.climb_xp_gain_methods.send) this.climb_xp += (amount + 0.05) * this.ruleset.climb_xp_gain_mult
-               this.attacks_sent += amount
-               send_attacks(this, amount)
+               if(this.ruleset.climb_xp_gain_methods.send) this.climb_xp += (result.amount + 0.05) * this.ruleset.climb_xp_gain_mult
+               this.attacks_sent += result.amount
+               send_attacks(this, result.amount)
             }
 
             if(this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 2 && this.ruleset.floor_barriers){
@@ -1759,6 +1769,22 @@
                return !flag
             })
          }
+         bomb_update(){
+            for(let yindex = this.board.length-1; yindex >= 0; yindex--){
+               this.board[yindex].forEach((cell,xindex) => {
+                  if(cell.type == 5 && cell.subtype.primed && (yindex == this.board.length-1 || [1,2].includes(this.board[yindex+1][xindex].type))){this.board[yindex][xindex].type = cell.subtype.post[0]; this.board[yindex][xindex].subtype = cell.subtype.post[1]}
+                  else if(cell.type == 5) console.log(cell.subtype.primed, yindex == this.board.length-1, [1,2].includes(this.board[yindex+1][xindex].type))
+               })
+            }
+            for(let yindex = this.board.length-1; yindex >= 0; yindex--){
+               this.board[yindex].forEach((cell,xindex) => {
+                  if(cell.type == 5 && !cell.subtype.primed && (yindex == this.board.length-1 || this.board[yindex+1][xindex].type == 0 || (this.board[yindex+1][xindex].type == 5 && this.board[yindex+1][xindex].subtype.primed))){
+                     cell.subtype.primed = true
+                  }
+                  else if(cell.type == 5) console.log(!cell.subtype.primed, yindex == this.board.length-1, this.board[yindex][xindex].type == 0)
+               })
+            }
+         }
          new_floor(){
             this.floor++
             this.bonus_altitude += this.ruleset.floor_cross_altitude * this.ruleset.altitude_mult
@@ -1768,7 +1794,7 @@
             this.execute_mod_functions("region")
          }
          new_region(){
-
+            this.execute_mod_functions("region")
          }
          inject_garbage(new_attack = true, messiness = this.ruleset.garbage_messiness, type = "normal", counter = 10, override_pattern = undefined){
             let pattern = override_pattern ?? this.current_garbage_pattern
@@ -1793,8 +1819,10 @@
                if(type == "perma") this.board[garbage_entry_row][i] = new tile(3)
                else if(result.garbage_pattern[i] == 0) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[0,0]}) : new tile(0)
                else if(result.garbage_pattern[i] == 1) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[2,0]}) : new tile(2)
+               else if(result.garbage_pattern[i] == 2) this.board[garbage_entry_row][i] = type=="wound"? new tile(4, {counter, post:[5,{primed: false, post: [2,0]}]}) : new tile(5,{primed: false, post: [2,0]})
             }
             if(type == "perma" || type == "wound") this.garbage_entry_row++
+            else this.bomb_update()
             if(this.piece_obstructed()) this.piece_position.y++
 
             messiness -= Math.min(1, this.targeting_grace / this.ruleset.targeting_grace_effective_max) * this.ruleset.targeting_grace_max_messiness_reduction
@@ -1897,14 +1925,16 @@
             this.execute_mod_functions("new_garbage_pattern")
             this.bag.sort(() => 0.5 - Math.random())
             while(this.queue.length < this.ruleset.queue_size + 3){
-               this.queue.push(this.get_piece(this.bag.pop()))
+               let new_piece = this.get_piece(this.bag.pop())
+               let result = this.execute_mod_functions("piece_created",{new_piece})
+               this.queue.push(result.new_piece)
                if(this.bag.length <= this.ruleset.bag_refresh_at){
                   this.bag = [...this.ruleset.bag]
                   this.bag.sort(() => 0.5 - Math.random())
                }
             }
             this.hold_cooldown = this.ruleset.hold_cooldown >= 0? 0 : -1
-            $("body").css("overflow", "hidden")
+            $("body").css("overflow", "hidden").css("padding-bottom",0)
             $("#board").css("display","flex").css("scale",1)
             $("#background").css("display","flex")
             $("#background").css("opacity",1)
@@ -2294,7 +2324,7 @@
                      cell.opacity -= Math.min(cell.opacity, 3 * input.delta)
                      cell.opacity = Math.min(1, Math.max(0, cell.opacity))
                   }
-                  if(cell.type == 2){
+                  if([2,5].includes(cell.type)){
                      let garbage_rows = recipient.board.filter(row => row.find(cell => cell.type == 2))
                      garbage_rows = garbage_rows.slice(garbage_rows.length - 3)
                      cell.opacity = ((garbage_rows.findIndex(a_row => a_row == row) + 1) + 3 - Math.min(3, garbage_rows.length)) / 3 - 0.1
@@ -2540,11 +2570,122 @@
                return input
             }, priority: 0}
          },
+         {
+            name: "backfire",
+            sent: {effect: (recipient, input) => {
+               let backfire_amount = input.amount * 0.75
+               if(backfire_amount % 1 != 0){
+                  if(Math.random() < backfire_amount - parseInt(backfire_amount)) backfire_amount += 1
+                  backfire_amount = parseInt(backfire_amount)
+               }
+               if(backfire_amount >= recipient.ruleset.windup_threshold) recipient.windups.push({chunks: backfire_amount, time: 0, chunk_amount: 0})
+               else if(backfire_amount >= 1) recipient.garbage_queue.push({size: backfire_amount, time_in_queue: recipient.ruleset.garbage_entry_delay[recipient.floor-1]-0.5})
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "reckoning",
+            stored_attacks: 0,
+            start: {effect: (recipient, input) => {
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+               recipient.ruleset.floor_barriers = false
+               recipient.ruleset.floor_cross_altitude = 0
+               recipient.ruleset.KO_altitude_gain = 0
+               recipient.ruleset.climb_xp_gain_methods.block = false
+               if(!recipient.mods.includes(15)) recipient.ruleset.passive_altitude_gain = 0.5
+               mods[19].stored_attacks = 0
+            }, priority: 0},
+            sent: {effect: (recipient, input) => {
+               mods[19].stored_attacks += 0.3 * input.amount
+               let backfire_amount = input.amount
+               if(backfire_amount >= recipient.ruleset.windup_threshold) recipient.windups.push({chunks: backfire_amount, time: 0, chunk_amount: 0})
+               else if(backfire_amount >= 1) recipient.garbage_queue.push({size: backfire_amount, time_in_queue: recipient.ruleset.garbage_entry_delay[recipient.floor-1]-0.5})
+               return input
+            }, priority: 0},
+            region: {effect: (recipient, input) => {
+               let this_mod = mods[19]
+               this_mod.stored_attacks = parseInt(this_mod.stored_attacks)
+               if(this_mod.stored_attacks >= recipient.ruleset.windup_threshold){
+                  while(this_mod.stored_attacks > 0){
+                     recipient.windups.push({chunks: Math.min(this_mod.stored_attacks, recipient.ruleset.windup_maximum_attack), time: 0, chunk_amount: 0})
+                     this_mod.stored_attacks -= Math.min(this_mod.stored_attacks, recipient.ruleset.windup_maximum_attack)
+                  }
+               }
+               else if(this_mod.stored_attacks >= 1) recipient.garbage_queue.push({size: this_mod.stored_attacks, time_in_queue: 0})
+               this_mod.stored_attacks = 0
+            }, priority: 0},
+            render: {effect: (recipient, input) => {
+               if(mods[19].stored_attacks >= 1) $("#mod-19-name").html("RECKONING <span style='color:orange;'>&#x26A0; " + Math.floor(mods[19].stored_attacks) + " &#x26A0;</span>")
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "bomb garbage",
+            start: {effect: (recipient, input) => {
+               recipient.garbage_received_mults.bombs = 1.5
+               recipient.ruleset.targeting_grace_mult *= 0.67
+               recipient.ruleset.garbage_messiness += 0.05
+            }, priority: 0},
+            garbage: {effect: (recipient, input) => {
+               input.garbage_pattern = input.garbage_pattern.map(type => type == 0? 2 : type)
+               return input
+            }, priority: -2}
+         },
+         {
+            name: "duality",
+            bomb_pattern: [],
+            bomb_pattern_change_chance: [0.1,0.14,0.18,0.22,0.26,0.3,0.34,0.38,0.42,0.46],
+            start: {effect: (recipient, input) => {
+               let this_mod = mods[21]
+               this_mod.bomb_pattern = []
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+               recipient.garbage_received_mults.bombs = 1.5
+               recipient.ruleset.targeting_grace_mult *= 0.67
+               recipient.ruleset.garbage_messiness += 0.05
+               recipient.ruleset.garbage_well_amount++
+               recipient.ruleset.garbage_line_protection_max_stacks = 5
+            }, priority: -2},
+            garbage: {effect: (recipient, input) => {
+               let this_mod = mods[21]
+               let pattern = input.garbage_pattern.map((column, index) => column == 0? index : undefined).filter(column => column != undefined)
+               pattern.sort(() => Math.random() - 0.5)
+               let chosen_columns = []
+               if(Math.random() > this_mod.bomb_pattern_change_chance[recipient.floor-1]){
+                  chosen_columns = chosen_columns.concat(this_mod.bomb_pattern.filter(col => pattern.includes(col)))
+               }
+               let target_amount = pattern.length/2
+               if(target_amount % 1 != 0){
+                  if(Math.random() < 0.5) target_amount++
+                  target_amount -= 0.5
+               }
+               while(chosen_columns.length < target_amount){
+                  chosen_columns.push(pattern.pop())
+               }
+               chosen_columns.sort(() => Math.random() - 0.5)
+               while(chosen_columns.length > target_amount){
+                  chosen_columns.pop()
+               }
+               chosen_columns.forEach(col => input.garbage_pattern[col] = 2)
+               this_mod.bomb_pattern = chosen_columns
+               return input
+            }, priority: -2},
+            piece_created: {effect: (recipient, input) => {
+               let index = Math.floor(Math.random() * input.new_piece.tile_type.length)
+               console.log(index)
+               let after = [input.new_piece.tile_type[index].type, input.new_piece.tile_type[index].subtype]
+               input.new_piece.tile_type[index].type = 5
+               input.new_piece.tile_type[index].subtype = {primed: false, post: after}
+               return input
+            }, priority: 0}
+         },
       ]
       let modblocks = [
          {normal: 0, reversed: 1, state: "normal", selected: false},{normal: 2, reversed: 3, state: "normal", selected: false},{normal: 4, reversed: 5, state: "normal", selected: false},
          {normal: 6, reversed: 7, state: "normal", selected: false},{normal: 8, reversed: 9, state: "normal", selected: false},{normal: 10, reversed: 11, state: "normal", selected: false},
-         {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false},{normal: 16, reversed: 17, state: "normal", selected: false}
+         {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false},{normal: 16, reversed: 17, state: "normal", selected: false},
+         {normal: 18, reversed: 19, state: "normal", selected: false},{normal: 20, reversed: 21, state: "normal", selected: false}
       ]
       function rerender_mods(){
          $("#available-mods,#selected-mods").empty()
