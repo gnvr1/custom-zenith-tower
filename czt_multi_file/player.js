@@ -3,8 +3,8 @@ class player {
       board_dimensions: new vector(10,20),
       board_dimension_mults: new vector(1,1),
       attack_table: {
-         normal: [0,0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
-         spin: [0,0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+         normal: [0,0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
+         spin: [0,0,1,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24]
       },
       queue_size: 5,
       hold_cooldown: 1,
@@ -71,7 +71,7 @@ class player {
          new piece("L",[new vector(-1,0),new vector(0,0),new vector(1,0),new vector(1,1)],3),
          new piece("O",[new vector(0,0),new vector(-1,0),new vector(0,-1),new vector(-1,-1)],4,false),
          new piece("S",[new vector(-1,0),new vector(0,0),new vector(0,1),new vector(1,1)],5),
-         new piece("T",[new vector(-1,0),new vector(0,0),new vector(0,1),new vector(1,0)],6, true, kick_tables.SRSp, {spin: [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30]},"weirdplus"),
+         new piece("T",[new vector(-1,0),new vector(0,0),new vector(0,1),new vector(1,0)],6, true, kick_tables.SRSp, {spin: [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50]},"weirdplus"),
          new piece("Z",[new vector(-1,1),new vector(0,1),new vector(0,0),new vector(1,0)],7),
          new piece("I5",[new vector(-2,0),new vector(-1,0),new vector(0,0),new vector(1,0),new vector(2,0)],1,true,kick_tables.SRSpI),
       ],
@@ -169,6 +169,7 @@ class player {
    windup_power_increase_altitude = this.ruleset.windup_power_first_increase_altitude
    clutch = false
    mods = []
+   last_line_indexes_cleared = []
    base_fatigue_removed = false
    last_attacker = undefined
    stars = []
@@ -743,7 +744,7 @@ class player {
       if(this.hold_cooldown > 0) this.hold_cooldown -= 1
 
       let lines_cleared = 0
-      let cleared_indexes = []
+      this.last_line_indexes_cleared = []
       let garbage_cleared = 0
       let attacks = 0
       let pc = 0
@@ -752,7 +753,7 @@ class player {
          let flag = !row.find(cell => cell.type == 0 || cell.type > 2)
          if(flag){
             lines_cleared++
-            cleared_indexes.push(yindex)
+            this.last_line_indexes_cleared.push(yindex)
             if(row.find(cell => cell.type == 2)) garbage_cleared++
             row.forEach((cell, xindex) => {this.board[yindex][xindex] = new tile(0)})
          }
@@ -888,7 +889,7 @@ class player {
          dropped = true
       }
 
-      let result = this.execute_mod_functions("placed",{dropped, lines_cleared, garbage_cleared, cleared_indexes, attacks, pc})
+      let result = this.execute_mod_functions("placed",{dropped, lines_cleared, garbage_cleared, attacks, pc})
 
       this.create_attacks(result.attacks)
       if(result.lines_cleared && this.ruleset.climb_xp_gain_methods.clear) this.climb_xp += (Math.min(result.lines_cleared, 2) + 0.05) * this.ruleset.climb_xp_gain_mult
@@ -909,22 +910,22 @@ class player {
       let wait_time = (lines_cleared > 0)? this.ruleset.lc_are : 0
 
 
-      result.cleared_indexes.forEach((yindex, index_index) => {
+      this.last_line_indexes_cleared.forEach((yindex, index_index) => {
          this.board[yindex].forEach((cell, xindex) => {
             if(wait_time <= 0.7 && wait_time > 0.25) this.clear_whites.push({position: new vector(xindex,yindex), animation: 0, time: 0, end_time: wait_time - 0.15})
             if(wait_time > 0.7) this.clear_whites.push({position: new vector(xindex,yindex), animation: 1, time: (-xindex/* - (cleared_indexes.length - 1 - index_index) / 2*/) * (wait_time - 0.2) * (2/3) / (this.current_board_dimensions.x - 1/* + (lines_cleared - 1) / 2*/), end_time: (wait_time - 0.2) / 3})
          })
       })
 
-      if(wait_time > 0) window.setTimeout(() => this.update_clears_and_continue(cleared_indexes), wait_time * 1000)
-      else this.update_clears_and_continue(cleared_indexes)
+      if(wait_time > 0) window.setTimeout(() => this.update_clears_and_continue(), wait_time * 1000)
+      else this.update_clears_and_continue()
       
    }
-   update_clears_and_continue(cleared_indexes){
-      if(cleared_indexes.length > 0){
+   update_clears_and_continue(){
+      if(this.last_line_indexes_cleared.length > 0){
          let amount = 0
          this.board.forEach((row, yindex) => {
-            if(!cleared_indexes.includes(yindex)) row.forEach((cell, xindex) => {
+            if(!this.last_line_indexes_cleared.includes(yindex)) row.forEach((cell, xindex) => {
                this.board[yindex][xindex] = new tile(0)
                this.board[yindex - amount][xindex] = cell
             })
@@ -977,8 +978,8 @@ class player {
       if(amount) {
          let result = this.execute_mod_functions("sent", {amount, type})
          let stars = [result.amount, 0, 0]
-         let treshold = 15
-         if(result.type == "starsurge") treshold = 40
+         let treshold = 12
+         if(result.type == "starsurge") treshold = 30
          while(stars[0] + stars[1] >= treshold && stars[0] >= 10){
             stars[0] -= 10
             stars[1]++
@@ -1027,7 +1028,6 @@ class player {
       for(let yindex = this.board.length-1; yindex >= 0; yindex--){
          this.board[yindex].forEach((cell,xindex) => {
             if(cell.type == 5 && cell.subtype.primed && (yindex == this.board.length-1 || [1,2].includes(this.board[yindex+1][xindex].type))){this.board[yindex][xindex].type = cell.subtype.post[0]; this.board[yindex][xindex].subtype = cell.subtype.post[1]}
-            else if(cell.type == 5) console.log(cell.subtype.primed, yindex == this.board.length-1, [1,2].includes(this.board[yindex+1][xindex].type))
          })
       }
       for(let yindex = this.board.length-1; yindex >= 0; yindex--){
@@ -1035,7 +1035,6 @@ class player {
             if(cell.type == 5 && !cell.subtype.primed && (yindex == this.board.length-1 || this.board[yindex+1][xindex].type == 0 || (this.board[yindex+1][xindex].type == 5 && this.board[yindex+1][xindex].subtype.primed))){
                cell.subtype.primed = true
             }
-            else if(cell.type == 5) console.log(!cell.subtype.primed, yindex == this.board.length-1, this.board[yindex][xindex].type == 0)
          })
       }
    }
@@ -1090,6 +1089,7 @@ class player {
          else this.current_garbage_pattern = this.randomize_garbage_pattern()
          this.execute_mod_functions("new_garbage_pattern")
       }
+      this.last_line_indexes_cleared = this.last_line_indexes_cleared.map(row => row+1)
    }
    randomize_garbage_pattern(ignore_stuff = false){
       let columns = [{number: 0, difficulty: 0, weight: 0}]

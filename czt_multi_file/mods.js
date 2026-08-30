@@ -290,7 +290,7 @@ let mods = [
       },
       wounds_to_inject: 0,
       start: [{effect: (recipient, input) => {
-         recipient.ruleset.attack_table.spin = [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42]
+         recipient.ruleset.attack_table.spin = [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50]
          recipient.ruleset.minimum_action_text_opacity = 0.7
          mods[12].previous.amount = -1
       }, priority: 0},
@@ -328,7 +328,7 @@ let mods = [
       garbo_curse: false,
       usual_mult: 1,
       start: [{effect: (recipient, input) => {
-         recipient.ruleset.attack_table.spin = [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42]
+         recipient.ruleset.attack_table.spin = [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50]
          recipient.ruleset.garbage_line_protection_max_stacks = 5
          recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
          recipient.ruleset.garbage_messiness += 0.3
@@ -571,8 +571,8 @@ let mods = [
    {
       name: "bomb garbage",
       start: {effect: (recipient, input) => {
-         recipient.garbage_received_mults.bombs = 1.5
-         recipient.ruleset.targeting_grace_mult *= 0.67
+         recipient.garbage_received_mults.bombs = 1.25
+         recipient.ruleset.targeting_grace_mult *= 0.8
          recipient.ruleset.garbage_messiness += 0.05
       }, priority: 0},
       garbage: {effect: (recipient, input) => {
@@ -583,18 +583,20 @@ let mods = [
    {
       name: "duality",
       bomb_pattern: [],
-      bomb_pattern_change_chance: [0.1,0.14,0.18,0.22,0.26,0.3,0.34,0.38,0.42,0.46],
+      bomb_pattern_change_chance: [0.3,0.34,0.38,0.42,0.46,0.5,0.54,0.58,0.62,0.66],
+      piece_counter: 0,
       start: {effect: (recipient, input) => {
          let this_mod = mods[21]
          this_mod.bomb_pattern = []
+         this_mod.piece_counter = 0
          recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
          recipient.enable_hard_mode()
-         recipient.garbage_received_mults.bombs = 1.5
-         recipient.ruleset.targeting_grace_mult *= 0.67
+         recipient.garbage_received_mults.bombs = 1.25
+         recipient.ruleset.targeting_grace_mult *= 0.8
          recipient.ruleset.garbage_messiness += 0.05
          recipient.ruleset.garbage_well_amount++
          recipient.ruleset.garbage_line_protection_max_stacks = 5
-      }, priority: -2},
+      }, priority: 0},
       garbage: {effect: (recipient, input) => {
          let this_mod = mods[21]
          let pattern = input.garbage_pattern.map((column, index) => column == 0? index : undefined).filter(column => column != undefined)
@@ -620,11 +622,16 @@ let mods = [
          return input
       }, priority: -2},
       piece_created: {effect: (recipient, input) => {
-         let index = Math.floor(Math.random() * input.new_piece.tile_type.length)
-         console.log(index)
-         let after = [input.new_piece.tile_type[index].type, input.new_piece.tile_type[index].subtype]
-         input.new_piece.tile_type[index].type = 5
-         input.new_piece.tile_type[index].subtype = {primed: false, post: after}
+         let this_mod = mods[21]
+         this_mod.piece_counter++
+         if(this_mod.piece_counter >= 6){
+            this_mod.piece_counter = 0
+            let index = Math.floor(Math.random() * input.new_piece.tile_type.length)
+            console.log(index)
+            let after = [input.new_piece.tile_type[index].type, input.new_piece.tile_type[index].subtype]
+            input.new_piece.tile_type[index].type = 5
+            input.new_piece.tile_type[index].subtype = {primed: false, post: after}
+         }
          return input
       }, priority: 0}
    },
