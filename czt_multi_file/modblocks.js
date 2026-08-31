@@ -2,7 +2,7 @@ let modblocks = [
    {normal: 0, reversed: 1, state: "normal", selected: false},{normal: 2, reversed: 3, state: "normal", selected: false},{normal: 4, reversed: 5, state: "normal", selected: false},
    {normal: 6, reversed: 7, state: "normal", selected: false},{normal: 8, reversed: 9, state: "normal", selected: false},{normal: 10, reversed: 11, state: "normal", selected: false},
    {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false},{normal: 16, reversed: 17, state: "normal", selected: false},
-   {normal: 18, reversed: 19, state: "normal", selected: false},{normal: 20, reversed: 21, state: "normal", selected: false}
+   {normal: 18, reversed: 19, state: "normal", selected: false},{normal: 20, reversed: 21, state: "normal", selected: false},{normal: 22, reversed: 23, state: "normal", selected: false}
 ]
 function rerender_mods(){
    $("#available-mods,#selected-mods").empty()

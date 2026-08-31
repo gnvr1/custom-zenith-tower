@@ -265,7 +265,7 @@ let mods = [
          let to_add = Math.max(0, Math.min(3, recipient.current_board_dimensions.y - 2) - recipient.board.filter(row => row.find(cell => cell.type == 2)).length - recipient.garbage_queue.reduce((sum,chunk) => sum + chunk.size, 0))
          for(let i = 0; i < to_add; i++) recipient.garbage_queue.push({size: 1, time_in_queue: 5})
          recipient.separate_garbage[0] += to_add
-      }, priority: -2}],
+      }, priority: -3}],
       tick: {effect: (recipient, input) => {
          recipient.board.forEach((row) => {row.forEach(cell => {
             if(cell.type == 1){
@@ -345,7 +345,7 @@ let mods = [
          for(let i = 0; i < to_add; i++) recipient.garbage_queue.push({size: 1, time_in_queue: 5})
          recipient.separate_garbage[0] += to_add
          recipient.ruleset.available_pieces.forEach(piece => {if(piece.spin_detection == "none") piece.spin_detection = "immobility"})
-      }, priority: -2}],
+      }, priority: -3}],
       placed: {effect: (recipient, input) => {
          let this_mod = mods[13]
          if(input.lines_cleared > 0 || recipient.piece_spinnin > 0){
@@ -634,5 +634,99 @@ let mods = [
          }
          return input
       }, priority: 0}
+   },
+   {
+      name: "blockade",
+      add_blockade: (recipient) => {
+         let columns = []
+         for(let i = 0; i < recipient.current_board_dimensions.x; i++) columns.push(i)
+         let choices = recipient.current_board_dimensions.x / 2
+         if(choices % 1 != 0){
+            if(Math.random() < 0.5) choices++
+            choices -= 0.5
+         }
+         while(columns.length > choices){
+            recipient.board[recipient.garbage_entry_row][columns.splice(Math.floor(Math.random() * columns.length),1)[0]] = new tile(2, 1)
+         }
+      },
+      start: {effect: (recipient, input) => {
+         mods[22].add_blockade(recipient)
+      }, priority: -2},
+      piece_spawn: {effect: (recipient, input) => {
+         if(!recipient.board.find(row => row.find(cell => cell.type == 2 && cell.subtype == 1))){
+            for(let i = recipient.board.length - 1; i >= recipient.garbage_entry_row; i--){
+               for(let j = 0; j < recipient.board[i].length; j++){
+                  if(recipient.board[i][j].type != 0){
+                     if(i == recipient.board.length - 1) death(recipient)
+                     else {
+                        recipient.board[i + 1][j] = recipient.board[i][j]
+                        recipient.board[i][j] = new tile(0)
+                     }
+                  }
+               }
+            }
+            mods[22].add_blockade(recipient)
+         }
+         return input
+      }, priority: 0}
+   },
+   {
+      name: "mining operation",
+      time_since_injection: 0,
+      add_blockade: (recipient, row_offset = 0) => {
+         let columns = []
+         let chosen = []
+         for(let i = 0; i < recipient.current_board_dimensions.x; i++) columns.push(i)
+         let choices = recipient.current_board_dimensions.x / 2
+         if(choices % 1 != 0){
+            if(Math.random() < 0.5) choices++
+            choices -= 0.5
+         }
+         while(columns.length > choices){
+            chosen.push(columns.splice(Math.floor(Math.random() * columns.length),1)[0])
+         }
+         recipient.board[recipient.garbage_entry_row + row_offset] = recipient.board[recipient.garbage_entry_row + row_offset].map((cell,index) => chosen.includes(index)? (new tile(2, 1)) : (new tile(0)))
+      },
+      start: {effect: (recipient, input) => {
+         let this_mod = mods[23]
+         this_mod.add_blockade(recipient)
+         this_mod.add_blockade(recipient,1)
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+         this_mod.time_since_injection = 0
+      }, priority: -2},
+      piece_spawn: {effect: (recipient, input) => {
+         while(recipient.board.filter(row => row.find(cell => cell.type == 2 && cell.subtype == 1)).length < 2){
+            for(let i = recipient.board.length - 1; i >= recipient.garbage_entry_row; i--){
+               for(let j = 0; j < recipient.board[i].length; j++){
+                  if(recipient.board[i][j].type != 0){
+                     if(i == recipient.board.length - 1) death(recipient)
+                     else {
+                        recipient.board[i + 1][j] = recipient.board[i][j]
+                        recipient.board[i][j] = new tile(0)
+                     }
+                  }
+               }
+            }
+            mods[23].add_blockade(recipient)
+         }
+         return input
+      }, priority: 0},
+      tick: {effect: (recipient, input) => {
+         let this_mod = mods[23]
+         this_mod.time_since_injection += input.delta
+         if(this_mod.time_since_injection > 7 - recipient.floor * 0.4) {
+            this_mod.time_since_injection -= 7 - recipient.floor * 0.4
+            recipient.inject_garbage(false)
+         }
+         let the_row = recipient.board.findLastIndex(row => row.find(cell => cell.type == 2 && cell.subtype == 1))
+         recipient.board.forEach((row, yindex) => {row.forEach(cell => {
+            if([1,2,5].includes(cell.type)){
+               if(yindex < the_row) cell.opacity = (row.find(cellb => cellb.type == 2 && cellb.subtype == 1))? 0.6 : 0
+               else cell.opacity = 1
+            }
+         })})
+         return input
+      }, priority: 1}
    },
 ]

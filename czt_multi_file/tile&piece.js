@@ -6,7 +6,7 @@ class tile {
    tile_render_info(){
       if(this.type == 0) return "none"
       if(this.type == 1) return piece_colors[this.subtype-1]
-      if(this.type == 2) return "darkgray"
+      if(this.type == 2) return this.subtype == 0? "darkgray" : "#5B5"
       if(this.type == 3) return "#555"
       if(this.type == 4) return "indigo"
       if(this.type == 5) return "firebrick"
