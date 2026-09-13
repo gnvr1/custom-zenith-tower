@@ -581,7 +581,7 @@
                if(target.targeting_grace > target.ruleset.targeting_grace_garbage_mult_threshold) amount *= 1 - ((target.targeting_grace - target.ruleset.targeting_grace_garbage_mult_threshold) * target.ruleset.targeting_grace_garbage_mult_per_point)
                if(Math.random() < amount - parseInt(amount)) amount++
                amount = parseInt(amount)
-               //console.log("received from skill level", sender.skill_score, sender.apm, "at alt", sender.altitude, amount, "with weight", weights[final_index], 1/Math.pow(1.2, Math.abs(index - final_index)-6), 1/Math.pow(1.1, Math.abs(sender.altitude - target.altitude)-15), "at time", target.time)
+               console.log( amount, "skill, apm", sender.skill_score.toFixed(3), sender.apm.toFixed(1), "alt dif", (sender.altitude - target.altitude).toFixed(1), "weight", weights[final_index].toFixed(3), "of", weights.reduce((sum, weight) => sum += weight, 0).toFixed(3), "time", target.time.toFixed(3))
                if(amount >= target.ruleset.windup_threshold) target.windups.push({chunks: amount, time: 0, chunk_amount: 0})
                else if(amount >= 1) target.garbage_queue.push({size: amount, time_in_queue: 0})
                target.targeting_grace = Math.min(target.targeting_grace + Math.floor(amount * target.ruleset.targeting_grace_mult), target.ruleset.targeting_grace_max)
