@@ -622,6 +622,7 @@
          }
          if(corpse instanceof player){
             corpse.render($("#board"))
+            console.log(tower.filter(climber => climber.targeting_grace >= 10).length)
             console.log(corpse)
             $("#board").css("scale",0)
             $("#results").css("display","flex")
