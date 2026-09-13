@@ -227,7 +227,7 @@ let mods = [
          return input
       }, priority: 0},
       piece_spawn: {effect: (recipient, input) => {
-         while(recipient.board.filter(row => row.find(cell => cell.type == 2)).length < Math.min(4, recipient.current_board_dimensions.y - 3)) recipient.inject_garbage()
+         while(recipient.board.filter(row => row.find(cell => cell.type == 2 || (cell.type == 5 && cell.subtype.post[0] == 2) )).length < Math.min(4, recipient.current_board_dimensions.y - 3)) recipient.inject_garbage()
          return input
       }, priority: 0}
    },
@@ -331,8 +331,8 @@ let mods = [
          recipient.ruleset.attack_table.spin = [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50]
          recipient.ruleset.garbage_line_protection_max_stacks = 5
          recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
-         recipient.ruleset.garbage_messiness += 0.3
          recipient.enable_hard_mode()
+         recipient.ruleset.garbage_messiness += 0.3
          recipient.ruleset.gravity_increase = 0
          recipient.ruleset.minimum_action_text_opacity = 0.7
          recipient.ruleset.btb_charging_starting_surge = 4
@@ -728,5 +728,42 @@ let mods = [
          })})
          return input
       }, priority: 1}
+   },
+   {
+      name: "4-wide",
+      start: {effect: (recipient, input) => {
+         recipient.ruleset.board_dimensions.x = 4
+         recipient.recalculate_board_dimensions()
+      }, priority: 0}
+   },
+   {
+      name: "balanced 4-wide",
+      wounds_to_inject: 0,
+      start: {effect: (recipient, input) => {
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+         recipient.ruleset.board_dimensions.x = 4
+         recipient.recalculate_board_dimensions()
+      }, priority: 0},
+      placed: {effect: (recipient, input) => {
+         let this_mod = mods[25]
+         if(recipient.combo > 0){
+            this_mod.wounds_to_inject += 20
+            recipient.clutch = false
+         }
+         return input
+      }, priority: 0},
+      piece_spawn: {effect: (recipient, input) => {
+         let this_mod = mods[25]
+         while(this_mod.wounds_to_inject > 0){
+            recipient.inject_garbage(false, 0, "wound", recipient.floor + 5, recipient.randomize_garbage_pattern(true))
+            this_mod.wounds_to_inject--
+         }
+         return input
+      }, priority: 0},
+      render: {effect: (recipient, input) => {
+         $(".combo-display").css("color","red")
+         return input
+      }, priority: 0}
    },
 ]

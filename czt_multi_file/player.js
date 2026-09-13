@@ -266,7 +266,7 @@ class player {
       let the_btb_display = tag().html("B2B x" + this.btb).css("display","block").css("visibility",(this.btb > 0)? "visible" : "hidden").css("margin-right",10).css("position","relative").css("top",3)
       let surge_display = tag().html("&#x272E;" + this.powah + "&#x272E;").css("display",(this.powah > 0)? "block" : "none").css("color","yellow").css("font-size", (Math.sqrt(Math.sqrt(this.powah+8))-0.6) + "em").addClass("powah")
       btb_displays.append(the_btb_display,surge_display)
-      let combo_display = tag().html((this.combo > 0)? this.combo + " COMBO" : "").css("display","block").addClass("big").css("opacity", 1-(Date.now()-this.last_action_text_update)/1600)
+      let combo_display = tag().html((this.combo > 0)? this.combo + " COMBO" : "").css("display","block").addClass("big combo-display").css("opacity", 1-(Date.now()-this.last_action_text_update)/1600)
       clear_info.append(action_text,btb_displays,combo_display)
       let stats = tag(other_mino_size * 6, board_mino_size * 8)
          .addClass("column").css("align-items","flex-end").css("text-align","right").css("color","white").css("padding",`20px ${border_width+5}px 0 0`)
