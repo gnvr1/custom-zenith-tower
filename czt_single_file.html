@@ -769,6 +769,7 @@
          cancelling_mult = 1
          gravity = 1.2
          gravity_increase = 0.03
+         time_speed_mult = 1
          lock_delay = 0.5
          lock_delay_resets = 14
          attack_mult = 1
@@ -834,6 +835,7 @@
          pc_btb = 2
          cc_attacks = 0
          cc_btb = 0
+         are = 0
          lc_are = 0
          rounding = "rng"
          garbage_line_protection_max_stacks = 0
@@ -1134,7 +1136,7 @@
          update_game_state(){
             let delta = (Date.now() - this.time_of_last_update) / 1000
             this.time_of_last_update = Date.now()
-            this.time += delta
+            this.time += delta * this.ruleset.time_speed_mult
             let temp_alt = this.altitude
             this.altitude += delta * this.climb_speed * 0.25 * this.ruleset.altitude_mult * this.ruleset.passive_altitude_gain * (this.ruleset.floor_barriers? Math.min(Math.pow((Math.max(0, this.ruleset.floor_tresholds[this.floor+1] - this.altitude - 1)) / 6, 0.75), 1) : 1)
             if(temp_alt < this.ruleset.floor_tresholds[this.floor+1] - 1 && this.ruleset.floor_barriers && this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 1) this.altitude = this.ruleset.floor_tresholds[this.floor+1] - 1
@@ -1664,7 +1666,7 @@
                })
             })
 
-            if(wait_time > 0) window.setTimeout(() => this.update_clears_and_continue(), wait_time * 1000)
+            if(wait_time > 0 || this.ruleset.are > 0) window.setTimeout(() => this.update_clears_and_continue(), wait_time * 1000 + this.ruleset.are * 1000)
             else this.update_clears_and_continue()
             
          }
@@ -1975,7 +1977,7 @@
                }
                else this.cxp = 0
             }
-            if(this.board > 2) {this.board -= this.dss / 2; this.cxp += this.dss / 2}
+            if(this.board > 2) {this.board -= this.dss / 2 * Math.max(1 - 0.5 * this.altitude / 1650, 0.5); this.cxp += this.dss / 2 * Math.max(1 - 0.5 * this.altitude / 1650, 0.5)}
             if(this.board > 21) death(this)
             if(this.board < 6) this.board += Math.cbrt(this.apm) / 10
             this.prepared_apm += this.apm / 120
@@ -2023,7 +2025,7 @@
          constructor(skill){
             this.skill_score = skill
             this.apm = 20 * Math.pow(skill, 20) + Math.pow(skill, 4) * 80 + skill * 20 + Math.sqrt(skill) * 20 + 5
-            this.dss = 1 * Math.pow(skill, 3) + 1 * skill + 0.15
+            this.dss = 1 * Math.pow(skill, 3) + 1 * skill + 0.25
             this.update_timer = window.setInterval(() => {this.update()}, 500)
          }
       }
@@ -2819,13 +2821,38 @@
                return input
             }, priority: 0}
          },
+         {
+            name: "danik's freefall",
+            height: 0,
+            target_gravity: 1200,
+            start: {effect: (recipient, input) => {
+               recipient.ruleset.lock_delay_resets = 0
+               recipient.ruleset.DAS = 0.166667
+               recipient.ruleset.ARR = 0.016667
+               recipient.ruleset.are = 0.5
+               //recipient.ruleset.lock_delay = 2
+            }, priority: 0},
+            tick: {effect: (recipient, input) => {
+               let this_mod = mods[26]
+               if(recipient.time > 1) recipient.ruleset.gravity += Math.min(this_mod.target_gravity - recipient.ruleset.gravity, recipient.ruleset.gravity * 1.2, 180) * input.delta
+               if(recipient.piece_position.y < this_mod.height){
+                  this_mod.height = recipient.piece_position.y
+                  recipient.lock_delay = recipient.ruleset.lock_delay
+               }
+               return input
+            }, priority: 0},
+            piece_spawn: {effect: (recipient, input) => {
+               mods[26].height = recipient.current_board_dimensions.y + 1
+               return input
+            }, priority: 0}
+         },
       ]
       let modblocks = [
          {normal: 0, reversed: 1, state: "normal", selected: false},{normal: 2, reversed: 3, state: "normal", selected: false},{normal: 4, reversed: 5, state: "normal", selected: false},
          {normal: 6, reversed: 7, state: "normal", selected: false},{normal: 8, reversed: 9, state: "normal", selected: false},{normal: 10, reversed: 11, state: "normal", selected: false},
          {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false},{normal: 16, reversed: 17, state: "normal", selected: false},
          {normal: 18, reversed: 19, state: "normal", selected: false},{normal: 20, reversed: 21, state: "normal", selected: false},{normal: 22, reversed: 23, state: "normal", selected: false},
-         {normal: 24, reversed: 25, state: "normal", selected: false}
+         {normal: 24, reversed: 25, state: "normal", selected: false},
       ]
       function rerender_mods(){
          $("#available-mods,#selected-mods").empty()

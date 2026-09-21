@@ -23,6 +23,7 @@ class player {
       cancelling_mult: 1,
       gravity: 1.2,
       gravity_increase: 0.03,
+      time_speed_mult: 1,
       lock_delay: 0.5,
       lock_delay_resets: 14,
       attack_mult: 1,
@@ -89,6 +90,7 @@ class player {
       cc_attacks: 0,
       cc_btb: 0,
       lc_are: 0,
+      are: 0,
       rounding: "rng",
       garbage_line_protection_max_stacks: 0,
       garbage_line_protection_reduction_per_line: 0.5,
@@ -386,7 +388,7 @@ class player {
    update_game_state(){
       let delta = (Date.now() - this.time_of_last_update) / 1000
       this.time_of_last_update = Date.now()
-      this.time += delta
+      this.time += delta * this.ruleset.time_speed_mult
       let temp_alt = this.altitude
       this.altitude += delta * this.climb_speed * 0.25 * this.ruleset.altitude_mult * this.ruleset.passive_altitude_gain * (this.ruleset.floor_barriers? Math.min(Math.pow((Math.max(0, this.ruleset.floor_tresholds[this.floor+1] - this.altitude - 1)) / 6, 0.75), 1) : 1)
       if(temp_alt < this.ruleset.floor_tresholds[this.floor+1] - 1 && this.ruleset.floor_barriers && this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 1) this.altitude = this.ruleset.floor_tresholds[this.floor+1] - 1
@@ -917,7 +919,7 @@ class player {
          })
       })
 
-      if(wait_time > 0) window.setTimeout(() => this.update_clears_and_continue(), wait_time * 1000)
+      if(wait_time > 0 || this.ruleset.are > 0) window.setTimeout(() => this.update_clears_and_continue(), wait_time * 1000 + this.ruleset.are * 1000)
       else this.update_clears_and_continue()
       
    }

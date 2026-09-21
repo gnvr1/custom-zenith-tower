@@ -28,7 +28,7 @@ class fake_player {
          }
          else this.cxp = 0
       }
-      if(this.board > 2) {this.board -= this.dss / 2; this.cxp += this.dss / 2}
+      if(this.board > 2) {this.board -= this.dss / 2 * Math.max(1 - 0.5 * this.altitude / 1650, 0.5); this.cxp += this.dss / 2 * Math.max(1 - 0.5 * this.altitude / 1650, 0.5)}
       if(this.board > 21) death(this)
       if(this.board < 6) this.board += Math.cbrt(this.apm) / 10
       this.prepared_apm += this.apm / 120
@@ -76,7 +76,7 @@ class fake_player {
    constructor(skill){
       this.skill_score = skill
       this.apm = 20 * Math.pow(skill, 20) + Math.pow(skill, 4) * 80 + skill * 20 + Math.sqrt(skill) * 20 + 5
-      this.dss = 1 * Math.pow(skill, 3) + 1 * skill + 0.15
+      this.dss = 1 * Math.pow(skill, 3) + 1 * skill + 0.25
       this.update_timer = window.setInterval(() => {this.update()}, 500)
    }
 }

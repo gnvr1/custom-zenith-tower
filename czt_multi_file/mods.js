@@ -766,4 +766,29 @@ let mods = [
          return input
       }, priority: 0}
    },
+   {
+      name: "danik's freefall",
+      height: 0,
+      target_gravity: 1200,
+      start: {effect: (recipient, input) => {
+         recipient.ruleset.lock_delay_resets = 0
+         recipient.ruleset.DAS = 0.166667
+         recipient.ruleset.ARR = 0.016667
+         recipient.ruleset.are = 0.5
+         //recipient.ruleset.lock_delay = 2
+      }, priority: 0},
+      tick: {effect: (recipient, input) => {
+         let this_mod = mods[26]
+         if(recipient.time > 1) recipient.ruleset.gravity += Math.min(this_mod.target_gravity - recipient.ruleset.gravity, recipient.ruleset.gravity * 1.2, 180) * input.delta
+         if(recipient.piece_position.y < this_mod.height){
+            this_mod.height = recipient.piece_position.y
+            recipient.lock_delay = recipient.ruleset.lock_delay
+         }
+         return input
+      }, priority: 0},
+      piece_spawn: {effect: (recipient, input) => {
+         mods[26].height = recipient.current_board_dimensions.y + 1
+         return input
+      }, priority: 0}
+   },
 ]
