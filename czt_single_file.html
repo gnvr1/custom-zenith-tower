@@ -622,7 +622,7 @@
          }
          if(corpse instanceof player){
             corpse.render($("#board"))
-            console.log(tower.filter(climber => climber.targeting_grace >= 10).length, "time", corpse.time)
+            console.log(tower.filter(climber => climber.targeting_grace >= 12).length, "time", corpse.time)
             console.log(corpse)
             $("#board").css("scale",0)
             $("#results").css("display","flex")
@@ -1985,7 +1985,7 @@
             else if(this.prepared_apm >= 2 && Math.random() < 0.03 + 0.04 * this.skill_score) this.create_attacks(2)
             else if(this.prepared_apm >= 4 && Math.random() < 0.7 / (Math.pow(2*this.skill_score - 0.5, 2) + 1.8) - 0.15) this.create_attacks(4)
             else if(this.prepared_apm >= 5 && Math.random() < 0.5 / (Math.pow(2*this.skill_score - 1.4, 2) + 1.3) - 0.25) this.create_attacks(5)
-            else if(this.prepared_apm >= 10 && Math.random() < 1.008 - Math.pow(this.skill_score, 0.05)) {if(this.prepared_apm > 30) console.log("POPPED " + this.prepared_apm + " time " + (the_contender? the_contender.time : 0)); this.create_attacks(this.prepared_apm)}
+            else if(this.prepared_apm >= 10 && Math.random() < 1.008 - Math.pow(this.skill_score, 0.05)) {if(this.prepared_apm > 30) this.create_attacks(this.prepared_apm)}
             else if(this.board + this.garbage_queue + this.entering_garbage > 16 && this.prepared_apm >= 5) this.create_attacks(5)
             else{
                this.board += Math.min(this.entering_garbage, 4)
@@ -2659,7 +2659,7 @@
                if(Math.random() > this_mod.bomb_pattern_change_chance[recipient.floor-1]){
                   chosen_columns = chosen_columns.concat(this_mod.bomb_pattern.filter(col => pattern.includes(col)))
                }
-               else console.log("rearranged")
+               //else console.log("rearranged")
                let target_amount = pattern.length/2
                if(target_amount % 1 != 0){
                   if(Math.random() < 0.5) target_amount++
@@ -2682,7 +2682,7 @@
                if(this_mod.piece_counter >= 6){
                   this_mod.piece_counter = 0
                   let index = Math.floor(Math.random() * input.new_piece.tile_type.length)
-                  console.log(index)
+                  //console.log(index)
                   let after = [input.new_piece.tile_type[index].type, input.new_piece.tile_type[index].subtype]
                   input.new_piece.tile_type[index].type = 5
                   input.new_piece.tile_type[index].subtype = {primed: false, post: after}
@@ -2914,7 +2914,13 @@
       }
       rerender_mods()
       let tower = []
+      let logger
       function refill_tower(){
+         window.clearInterval(logger)
+         logger = window.setInterval(() => {
+            let table = tower.reduce((vals, climber) => [vals[0] + climber.altitude, vals[1] + climber.targeting_grace], [0,0])
+            console.log((table[0] / 300).toFixed(4), (table[1] / 300).toFixed(4), the_contender.time.toFixed(2))
+         }, 7000)
          tower = []
          for(let i = 0; i < settings.other.fakeamount; i++){
             let new_contender = new fake_player(0.02 + Math.pow(i/settings.other.fakeamount,5) * 0.98)
