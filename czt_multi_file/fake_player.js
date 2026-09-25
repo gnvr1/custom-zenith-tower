@@ -36,7 +36,7 @@ class fake_player {
       else if(this.prepared_apm >= 2 && Math.random() < 0.03 + 0.04 * this.skill_score) this.create_attacks(2)
       else if(this.prepared_apm >= 4 && Math.random() < 0.7 / (Math.pow(2*this.skill_score - 0.5, 2) + 1.8) - 0.15) this.create_attacks(4)
       else if(this.prepared_apm >= 5 && Math.random() < 0.5 / (Math.pow(2*this.skill_score - 1.4, 2) + 1.3) - 0.25) this.create_attacks(5)
-      else if(this.prepared_apm >= 10 && Math.random() < 1.008 - Math.pow(this.skill_score, 0.05)) this.create_attacks(this.prepared_apm)
+      else if(this.prepared_apm >= 6 && Math.random() < 1.008 - Math.pow(this.skill_score, 0.05)) this.create_attacks(this.prepared_apm)
       else if(this.board + this.garbage_queue + this.entering_garbage > 16 && this.prepared_apm >= 5) this.create_attacks(5)
       else{
          this.board += Math.min(this.entering_garbage, 4)
