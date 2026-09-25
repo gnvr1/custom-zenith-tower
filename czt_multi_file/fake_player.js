@@ -76,7 +76,7 @@ class fake_player {
    constructor(skill){
       this.skill_score = skill
       this.apm = 20 * Math.pow(skill, 20) + Math.pow(skill, 4) * 80 + skill * 20 + Math.sqrt(skill) * 20 + 5
-      this.dss = 1 * Math.pow(skill, 3) + 1 * skill + 0.25
+      this.dss = 1.5 * Math.pow(skill, 3) + 1.75 * skill + 0.45
       this.update_timer = window.setInterval(() => {this.update()}, 500)
    }
 }
