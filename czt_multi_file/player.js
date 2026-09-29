@@ -131,6 +131,7 @@ class player {
    queue = []
    bag = [...this.ruleset.bag]
    garbage_queue = []
+   garbage_to_add = 0
    windups = []
    chunk_started = false
    entering_garbage = []
@@ -427,6 +428,12 @@ class player {
          this.highest_climb_speed = Math.max(this.highest_climb_speed, this.climb_speed)
       }
       if(this.climb_speed == this.lock_csp && this.climb_xp > this.climb_speed * 2) this.lock_time = 5
+
+      if(this.garbage_to_add > 0){
+         if(this.garbage_to_add >= this.ruleset.windup_threshold) this.windups.push({chunks: this.garbage_to_add, time: 0, chunk_amount: 0})
+         else if(this.garbage_to_add >= 1) this.garbage_queue.push({size: this.garbage_to_add, time_in_queue: 0})
+         this.garbage_to_add = 0
+      }
 
       this.garbage_queue.forEach(chunk => chunk.time_in_queue += delta * (this.cancelling_sickness > this.ruleset.cancelling_sickness_tresholds.less_garbage_delay? 2 : 1))
       this.stars.forEach(star => star.current_lifetime += delta)

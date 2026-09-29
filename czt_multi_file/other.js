@@ -125,7 +125,9 @@ let tower = []
 function refill_tower(){
    tower = []
    for(let i = 0; i < settings.other.fakeamount; i++){
-      let new_contender = new fake_player(0.02 + Math.pow(i/settings.other.fakeamount,5) * 0.98)
+      let new_contender = new fake_player(0.02 + Math.pow(i/settings.other.fakeamount,3) * 0.98)
+      new_contender.time = Math.random() * 300
+      new_contender.altitude = new_contender.apm / 30 * new_contender.time
       tower.push(new_contender)
    }
    for(let i = 0; i < 2000; i+=1){

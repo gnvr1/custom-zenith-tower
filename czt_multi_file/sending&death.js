@@ -32,7 +32,8 @@ function send_attacks(sender, amount){
       })
       let index = tower.findIndex(player => player === sender)
       weights[index] = 0
-      weights.forEach((p, p_index) => {if(Math.abs(sender.altitude - tower[p_index].altitude) > 15){weights[p_index] *= Math.max(0.1, 1/Math.pow(1.013, Math.abs(sender.altitude - tower[p_index].altitude)-15))}})
+      //weights.forEach((p, p_index) => {if(Math.abs(sender.altitude - tower[p_index].altitude) > 15){weights[p_index] *= Math.max(0.1, 1/Math.pow(1.013, Math.abs(sender.altitude - tower[p_index].altitude)-15))}})
+      weights.forEach((p, p_index) => {if(index != p_index) weights[p_index] *= 1/(Math.pow(Math.abs(index - p_index), 1.5))})
       let targeting_value = Math.random() * weights.reduce((sum, weight) => sum += weight, 0)
       let temp = targeting_value
       let final_index = -1
@@ -53,8 +54,7 @@ function send_attacks(sender, amount){
          if(Math.random() < amount - parseInt(amount)) amount++
          amount = parseInt(amount)
          console.log( amount, "skill, apm", sender.skill_score.toFixed(3), sender.apm.toFixed(1), "alt dif", (sender.altitude - target.altitude).toFixed(1), "weight", weights[final_index].toFixed(3), "of", weights.reduce((sum, weight) => sum += weight, 0).toFixed(3), "time", target.time.toFixed(3))
-         if(amount >= target.ruleset.windup_threshold) target.windups.push({chunks: amount, time: 0, chunk_amount: 0})
-         else if(amount >= 1) target.garbage_queue.push({size: amount, time_in_queue: 0})
+         target.garbage_to_add += amount
          target.targeting_grace = Math.min(target.targeting_grace + Math.floor(amount * target.ruleset.targeting_grace_mult), target.ruleset.targeting_grace_max)
       }
       else if(target instanceof fake_player){
@@ -63,9 +63,9 @@ function send_attacks(sender, amount){
          amount *= time_mult
          if(target.targeting_grace > 8) amount *= 1 - (target.targeting_grace - 8) * 0.05
          if(Math.random() < amount - parseInt(amount)) amount++
-         amount = parseInt(amount)
-         target.garbage_queue += amount
-         if(target.verbose) console.log("received garbage", amount, "current_queue", target.garbage_queue)
+         amount = Math.min(parseInt(amount), target.altitude > 4000? parseInt(17 + (target.altitude - 4000) / 500) : 16)
+         for(let i = 0; i < amount; i++) target.garbage_queue.push(11 - target.floor + (amount > 8? 3 : 0))
+         if(target.verbose) console.log(amount, "skill, apm", sender.skill_score.toFixed(3), sender.apm.toFixed(1), "alt dif", (sender.altitude - target.altitude).toFixed(1), "weight", weights[final_index].toFixed(3), "of", weights.reduce((sum, weight) => sum += weight, 0).toFixed(3), "time", target.time.toFixed(3), "current_queue", target.garbage_queue)
          target.targeting_grace = Math.min(target.targeting_grace + amount, 18)
       }
       target.last_attacker = sender
