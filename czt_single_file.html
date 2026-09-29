@@ -2940,6 +2940,7 @@
             let table = tower.reduce((vals, climber) => [vals[0] + climber.altitude, vals[1] + climber.targeting_grace], [0,0])
             //console.log((table[0] / 300).toFixed(4), (table[1] / 300).toFixed(4), the_contender.time.toFixed(2))
          }, 7000)
+         tower.forEach((fp, index) => {window.clearInterval(fp.update_timer); delete tower[index]})
          tower = []
          for(let i = 0; i < settings.other.fakeamount; i++){
             let new_contender = new fake_player(0.02 + Math.pow(i/settings.other.fakeamount,3) * 0.98)

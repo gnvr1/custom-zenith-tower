@@ -123,6 +123,7 @@ function stop(){
 }
 let tower = []
 function refill_tower(){
+   tower.forEach((fp, index) => {window.clearInterval(fp.update_timer); delete tower[index]})
    tower = []
    for(let i = 0; i < settings.other.fakeamount; i++){
       let new_contender = new fake_player(0.02 + Math.pow(i/settings.other.fakeamount,3) * 0.98)
