@@ -359,7 +359,7 @@ let mods = [
             this_mod.previous_amount = recipient.piece_spinnin? input.lines_cleared : -1
             if(!recipient.piece_spinnin){
                recipient.action_text = "VOID"
-               input.attacks = (recipient.combo >= 2)? Math.log(1 + 1.25 * this.combo) : 0
+               input.attacks = (recipient.combo >= 2)? Math.log(1 + 1.25 * recipient.combo) : 0
                if(input.pc > 0) input.attacks += (input.pc == 2)? recipient.ruleset.pc_attacks : recipient.ruleset.cc_attacks
                recipient.btb = -1
                if(recipient.powah > 0){
@@ -467,8 +467,9 @@ let mods = [
       start: {effect: (recipient, input) => {
          let this_mod = mods[16]
          this_mod.dimensions = 4
+         if(recipient.mods.includes(26)) this_mod.dimensions = 5
          this_mod.line_counter = 0
-         recipient.ruleset.board_dimensions = new vector(4,4)
+         recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
          recipient.recalculate_board_dimensions() 
       }, priority: 0},
       placed: {effect: (recipient, input) => {
@@ -494,8 +495,9 @@ let mods = [
       start: {effect: (recipient, input) => {
          let this_mod = mods[17]
          this_mod.dimensions = 4
+         if(recipient.mods.includes(26)) this_mod.dimensions = 5
          this_mod.line_counter = 0
-         recipient.ruleset.board_dimensions = new vector(4,4)
+         recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
          recipient.recalculate_board_dimensions()
          recipient.ruleset.DAS = 0.003333
          recipient.ruleset.ARR = 0.003333
@@ -733,6 +735,7 @@ let mods = [
       name: "4-wide",
       start: {effect: (recipient, input) => {
          recipient.ruleset.board_dimensions.x = 4
+         if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
          recipient.recalculate_board_dimensions()
       }, priority: 0}
    },
@@ -743,12 +746,13 @@ let mods = [
          recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
          recipient.enable_hard_mode()
          recipient.ruleset.board_dimensions.x = 4
+         if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
          recipient.recalculate_board_dimensions()
       }, priority: 0},
       placed: {effect: (recipient, input) => {
          let this_mod = mods[25]
          if(recipient.combo > 0){
-            this_mod.wounds_to_inject += 20
+            this_mod.wounds_to_inject += recipient.combo
             recipient.clutch = false
          }
          return input
@@ -764,6 +768,33 @@ let mods = [
       render: {effect: (recipient, input) => {
          $(".combo-display").css("color","red")
          return input
+      }, priority: 0}
+   },
+   {
+      name: "pentos",
+      start: {effect: (recipient, input) => {
+         recipient.ruleset.available_pieces = [
+            new piece("V",[new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(1,0),new vector(1,1)],2,true,kick_tables.ASCdx),
+            new piece("N",[new vector(-2,0),new vector(-1,0),new vector(-1,-1),new vector(0,-1),new vector(1,-1)],2,false,kick_tables.ASCdx),
+            new piece("X",[new vector(0,1),new vector(0,0),new vector(-1,0),new vector(0,-1),new vector(1,0)],4,true,kick_tables.ASCdx),
+            new piece("K",[new vector(0,1),new vector(0,0),new vector(-1,0),new vector(0,-1),new vector(1,-1)],5,true,kick_tables.ASCdx),
+            new piece("I",[new vector(-2,0),new vector(-1,0),new vector(1,0),new vector(0,0),new vector(2,0)],1,true,kick_tables.ASCdx),
+            new piece("S",[new vector(0,0),new vector(-1,-1),new vector(0,-1),new vector(0,1),new vector(1,1)],5,true,kick_tables.ASCdx),
+            new piece("Z",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(1,-1),new vector(-1,1)],7,true,kick_tables.ASCdx),
+            new piece("F",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(-1,-1),new vector(1,0)],6,true,kick_tables.ASCdx),
+            new piece("T",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(-1,-1),new vector(1,-1)],6,true,kick_tables.ASCdx),
+            new piece("L",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(1,0)],3,false,kick_tables.ASCdx),
+            new piece("J",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(-2,0)],2,false,kick_tables.ASCdx),
+            new piece("W",[new vector(-1,-1),new vector(0,-1),new vector(0,0),new vector(1,0),new vector(1,1)],6,true,kick_tables.ASCdx),
+            new piece("H",[new vector(-1,-1),new vector(0,-1),new vector(0,0),new vector(1,0),new vector(-2,-1)],4,false,kick_tables.ASCdx),
+            new piece("B",[new vector(0,0),new vector(1,0),new vector(-1,0),new vector(1,1),new vector(0,1)],5,true,kick_tables.ASCdx),
+            new piece("Y",[new vector(0,0),new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1)],3,false,kick_tables.ASCdx),
+            new piece("R",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(-1,0)],1,false,kick_tables.ASCdx),
+            new piece("U",[new vector(-1,0),new vector(-1,1),new vector(0,0),new vector(1,0),new vector(1,1)],7,true,kick_tables.ASCdx),
+            new piece("P",[new vector(-1,0),new vector(-1,1),new vector(0,0),new vector(1,0),new vector(0,1)],3,true,kick_tables.ASCdx),
+         ]
+         recipient.ruleset.bag = ["V","N","X","K","I","S","Z","F","T","L","J","W","H","B","Y","R","U","P"]
+         recipient.ruleset.cancelling_sickness_gain_mult = 0
       }, priority: 0}
    },
    {

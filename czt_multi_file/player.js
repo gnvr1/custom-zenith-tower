@@ -1186,6 +1186,7 @@ class player {
       this.execute_mod_functions("start")
       this.current_garbage_pattern = this.randomize_garbage_pattern()
       this.execute_mod_functions("new_garbage_pattern")
+      this.bag = [...this.ruleset.bag]
       this.bag.sort(() => 0.5 - Math.random())
       while(this.queue.length < this.ruleset.queue_size + 3){
          let new_piece = this.get_piece(this.bag.pop())
