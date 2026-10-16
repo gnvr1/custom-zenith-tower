@@ -5,16 +5,36 @@ const clear_names = ["single","double","triple","quad","penta","hexa","hepta","o
 let keys_pressed = []
 class vector {
    constructor(x, y){
-      this.x = x; this.y = y;
+      if(x instanceof vector){
+         this.x = x.x
+         this.y = x.y
+      }
+      else{
+         this.x = x
+         this.y = y
+      }
    }
-   add(vect2){
-      return new vector(this.x + vect2.x, this.y + vect2.y)
+   add(x, y){
+      if(x instanceof vector) return new vector(this.x + x.x, this.y + x.y)
+      else return new vector(this.x + x, this.y + y)
    }
    scale(scalar){
       return new vector(this.x * scalar, this.y * scalar)
    }
    is_equal(vect2){
       return (this.x == vect2.x && this.y == vect2.y)
+   }
+   rot_90(){
+      let a = this.y
+      this.y = -this.x
+      this.x = a
+      return this
+   }
+   rot_270(){
+      let a = this.x
+      this.x = -this.y
+      this.y = a
+      return this
    }
 }
 const kick_tables = {
@@ -99,6 +119,91 @@ function hide_settings(save){
       refill_tower()
    }
    document.getElementsByTagName("dialog")[0].close()
+}
+const polyomino_amounts = [1,1,1,2,7,18,60,196,704,2500,9189]
+function generate_polyominoes(size, bound = 10, num = -1){
+   let polyominoes = []
+   let old_polyominoes = [[new vector(0,0)]] 
+   if(size > 2 && size <= 9) old_polyominoes = generate_polyominoes(size-1, bound)
+   if(size > 9) old_polyominoes = [generate_polyominoes(size - 1, bound, Math.floor(Math.random() * 9189))]
+   if(size == 1) return num == 0? old_polyominoes[0] : old_polyominoes
+   old_polyominoes.forEach(polyomino => {
+      let extremes = [0, 0, 0, 0]
+      let tocheck = []
+      polyomino.forEach(mino => {
+         if(mino.x < extremes[0]) extremes[0] = mino.x
+         if(mino.x > extremes[1]) extremes[1] = mino.x
+         if(mino.y < extremes[2]) extremes[2] = mino.y
+         if(mino.y > extremes[3]) extremes[3] = mino.y
+         let dirs = [new vector(-1, 0), new vector(1, 0), new vector(0, 1), new vector(0, -1)]
+         dirs.forEach(dir => tocheck.push(mino.add(dir)))
+      })
+      tocheck = tocheck.filter((pos, index) => !polyomino.find(mino => mino.is_equal(pos)) && !tocheck.slice(0,index).find(mino => mino.is_equal(pos)))
+      tocheck.forEach((pos) => {
+         let specific_extremes = [...extremes]
+         if(pos.x < specific_extremes[0]) specific_extremes[0] = pos.x
+         if(pos.x > specific_extremes[1]) specific_extremes[1] = pos.x
+         if(pos.y < specific_extremes[2]) specific_extremes[2] = pos.y
+         if(pos.y > specific_extremes[3]) specific_extremes[3] = pos.y
+         let new_polyomino = polyomino.map(mino => new vector(mino))
+         new_polyomino.push(pos)
+         let size = new vector(specific_extremes[1] - specific_extremes[0] + 1, specific_extremes[3] - specific_extremes[2] + 1)
+         if(size.x > bound || size.y > bound) return
+         new_polyomino = new_polyomino.map(mino => mino.add(specific_extremes[0] * (-1), specific_extremes[2] * (-1)))
+         let versions = []
+         for(let i = 0; i < 4; i++){
+            size = new vector(size.y, size.x)
+            new_polyomino = new_polyomino.map(mino => mino.rot_90().add(0, size.y - 1))
+            versions.push(new_polyomino.map(pos => new vector(pos)).sort((a, b) => (a.y == b.y)? (a.x - b.x) : (a.y - b.y)))
+         }
+         versions.sort((a,b) => {
+            let id = a.findIndex((v,ai) => !b[ai].is_equal(v))
+            if(id == -1) return 0
+            else return (a[id].y == b[id].y)? (a[id].x - b[id].x) : (a[id].y - b[id].y)
+         })
+         new_polyomino = versions[0]
+         let duplicate = false
+         let bounds = [0, polyominoes.length-1]
+         while(bounds[1] - bounds[0] >= 0){
+            let p_index = Math.floor((bounds[0] + bounds[1]) / 2)
+            let id = new_polyomino.findIndex((v,minoi) => !polyominoes[p_index][minoi].is_equal(v))
+            if(id == -1) {duplicate = true; break}
+            else if(((new_polyomino[id].y == polyominoes[p_index][id].y)? (new_polyomino[id].x - polyominoes[p_index][id].x) : (new_polyomino[id].y - polyominoes[p_index][id].y)) < 0) bounds[1] = p_index - 1
+            else bounds[0] = p_index + 1
+         }
+         if(!duplicate) polyominoes.splice(bounds[0],0,new_polyomino)
+      })
+   })
+   if(polyominoes.length == 0) return old_polyominoes[0]
+   if(num >= 0) {
+      if(num < polyominoes.length) return polyominoes[num]
+      else return polyominoes[Math.floor(Math.random() * polyominoes.length)]
+   }
+   return polyominoes
+}
+function generate_word(length) {
+   const samogloski = "aeiouy"
+   const spolgloski = "bcdfghjklmnpqrstvwxz"
+   const laczace = "bcdfghklmnprst"
+   let streak = 0
+   let curtype = -1
+   const random = (type) => {
+      let to_return = ""
+      if(type == 0) to_return = samogloski[Math.floor(Math.random() * samogloski.length)]
+      else if(curtype == 1) to_return = laczace[Math.floor(Math.random() * laczace.length)]
+      else to_return = spolgloski[Math.floor(Math.random() * spolgloski.length)] 
+      if(curtype != type){curtype = type; streak = 1}
+      return to_return
+   }
+   let word = ""
+   while(word.length < length) {
+      streak++
+      if("hjqvwxz".includes(word[word.length-1])) word += random(0)
+      else if((streak < 3 && length > 2) || streak == 1) word += (Math.random() < 1/3)? random(0) : random(1)
+      else word += random(1 - curtype)
+   }
+   //console.log(word)
+   return word.toUpperCase()
 }
 function input_pressed(e){
    let key = e.code

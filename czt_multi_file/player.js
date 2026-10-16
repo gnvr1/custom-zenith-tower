@@ -394,7 +394,7 @@ class player {
       this.altitude += delta * this.climb_speed * 0.25 * this.ruleset.altitude_mult * this.ruleset.passive_altitude_gain * (this.ruleset.floor_barriers? Math.min(Math.pow((Math.max(0, this.ruleset.floor_tresholds[this.floor+1] - this.altitude - 1)) / 6, 0.75), 1) : 1)
       if(temp_alt < this.ruleset.floor_tresholds[this.floor+1] - 1 && this.ruleset.floor_barriers && this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 1) this.altitude = this.ruleset.floor_tresholds[this.floor+1] - 1
       if(this.bonus_altitude > 0){
-         let alt_moved = Math.min(this.bonus_altitude, Math.pow(0.92, 1/(delta + 0.01)) * Math.max(this.bonus_altitude, 0.1))
+         let alt_moved = Math.min(this.bonus_altitude, Math.pow(0.915, 1/(delta + 0.01)) * Math.max(this.bonus_altitude, 0.1), 600 * delta)
          this.bonus_altitude -= alt_moved
          this.altitude += alt_moved
       }

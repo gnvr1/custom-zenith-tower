@@ -33,7 +33,7 @@ function send_attacks(sender, amount){
       let index = tower.findIndex(player => player === sender)
       weights[index] = 0
       //weights.forEach((p, p_index) => {if(Math.abs(sender.altitude - tower[p_index].altitude) > 15){weights[p_index] *= Math.max(0.1, 1/Math.pow(1.013, Math.abs(sender.altitude - tower[p_index].altitude)-15))}})
-      weights.forEach((p, p_index) => {if(index != p_index) weights[p_index] *= 1/(Math.pow(Math.abs(index - p_index), 1.5))})
+      weights.forEach((p, p_index) => {if(index != p_index) weights[p_index] *= 1/(Math.pow(1.7, Math.abs(index - p_index) - 1))})
       let targeting_value = Math.random() * weights.reduce((sum, weight) => sum += weight, 0)
       let temp = targeting_value
       let final_index = -1

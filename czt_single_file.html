@@ -443,16 +443,36 @@
       let keys_pressed = []
       class vector {
          constructor(x, y){
-            this.x = x; this.y = y;
+            if(x instanceof vector){
+               this.x = x.x
+               this.y = x.y
+            }
+            else{
+               this.x = x
+               this.y = y
+            }
          }
-         add(vect2){
-            return new vector(this.x + vect2.x, this.y + vect2.y)
+         add(x, y){
+            if(x instanceof vector) return new vector(this.x + x.x, this.y + x.y)
+            else return new vector(this.x + x, this.y + y)
          }
          scale(scalar){
             return new vector(this.x * scalar, this.y * scalar)
          }
          is_equal(vect2){
             return (this.x == vect2.x && this.y == vect2.y)
+         }
+         rot_90(){
+            let a = this.y
+            this.y = -this.x
+            this.x = a
+            return this
+         }
+         rot_270(){
+            let a = this.x
+            this.x = -this.y
+            this.y = a
+            return this
          }
       }
       const kick_tables = {
@@ -538,6 +558,92 @@
          }
          document.getElementsByTagName("dialog")[0].close()
       }
+      
+      const polyomino_amounts = [1,1,1,2,7,18,60,196,704,2500,9189]
+      function generate_polyominoes(size, bound = 10, num = -1){
+         let polyominoes = []
+         let old_polyominoes = [[new vector(0,0)]] 
+         if(size > 2 && size <= 9) old_polyominoes = generate_polyominoes(size-1, bound)
+         if(size > 9) old_polyominoes = [generate_polyominoes(size - 1, bound, Math.floor(Math.random() * 9189))]
+         if(size == 1) return num == 0? old_polyominoes[0] : old_polyominoes
+         old_polyominoes.forEach(polyomino => {
+            let extremes = [0, 0, 0, 0]
+            let tocheck = []
+            polyomino.forEach(mino => {
+               if(mino.x < extremes[0]) extremes[0] = mino.x
+               if(mino.x > extremes[1]) extremes[1] = mino.x
+               if(mino.y < extremes[2]) extremes[2] = mino.y
+               if(mino.y > extremes[3]) extremes[3] = mino.y
+               let dirs = [new vector(-1, 0), new vector(1, 0), new vector(0, 1), new vector(0, -1)]
+               dirs.forEach(dir => tocheck.push(mino.add(dir)))
+            })
+            tocheck = tocheck.filter((pos, index) => !polyomino.find(mino => mino.is_equal(pos)) && !tocheck.slice(0,index).find(mino => mino.is_equal(pos)))
+            tocheck.forEach((pos) => {
+               let specific_extremes = [...extremes]
+               if(pos.x < specific_extremes[0]) specific_extremes[0] = pos.x
+               if(pos.x > specific_extremes[1]) specific_extremes[1] = pos.x
+               if(pos.y < specific_extremes[2]) specific_extremes[2] = pos.y
+               if(pos.y > specific_extremes[3]) specific_extremes[3] = pos.y
+               let new_polyomino = polyomino.map(mino => new vector(mino))
+               new_polyomino.push(pos)
+               let size = new vector(specific_extremes[1] - specific_extremes[0] + 1, specific_extremes[3] - specific_extremes[2] + 1)
+               if(size.x > bound || size.y > bound) return
+               new_polyomino = new_polyomino.map(mino => mino.add(specific_extremes[0] * (-1), specific_extremes[2] * (-1)))
+               let versions = []
+               for(let i = 0; i < 4; i++){
+                  size = new vector(size.y, size.x)
+                  new_polyomino = new_polyomino.map(mino => mino.rot_90().add(0, size.y - 1))
+                  versions.push(new_polyomino.map(pos => new vector(pos)).sort((a, b) => (a.y == b.y)? (a.x - b.x) : (a.y - b.y)))
+               }
+               versions.sort((a,b) => {
+                  let id = a.findIndex((v,ai) => !b[ai].is_equal(v))
+                  if(id == -1) return 0
+                  else return (a[id].y == b[id].y)? (a[id].x - b[id].x) : (a[id].y - b[id].y)
+               })
+               new_polyomino = versions[0]
+               let duplicate = false
+               let bounds = [0, polyominoes.length-1]
+               while(bounds[1] - bounds[0] >= 0){
+                  let p_index = Math.floor((bounds[0] + bounds[1]) / 2)
+                  let id = new_polyomino.findIndex((v,minoi) => !polyominoes[p_index][minoi].is_equal(v))
+                  if(id == -1) {duplicate = true; break}
+                  else if(((new_polyomino[id].y == polyominoes[p_index][id].y)? (new_polyomino[id].x - polyominoes[p_index][id].x) : (new_polyomino[id].y - polyominoes[p_index][id].y)) < 0) bounds[1] = p_index - 1
+                  else bounds[0] = p_index + 1
+               }
+               if(!duplicate) polyominoes.splice(bounds[0],0,new_polyomino)
+            })
+         })
+         if(polyominoes.length == 0) return old_polyominoes[0]
+         if(num >= 0) {
+            if(num < polyominoes.length) return polyominoes[num]
+            else return polyominoes[Math.floor(Math.random() * polyominoes.length)]
+         }
+         return polyominoes
+      }
+      function generate_word(length) {
+         const samogloski = "aeiouy"
+         const spolgloski = "bcdfghjklmnpqrstvwxz"
+         const laczace = "bcdfghklmnprst"
+         let streak = 0
+         let curtype = -1
+         const random = (type) => {
+            let to_return = ""
+            if(type == 0) to_return = samogloski[Math.floor(Math.random() * samogloski.length)]
+            else if(curtype == 1) to_return = laczace[Math.floor(Math.random() * laczace.length)]
+            else to_return = spolgloski[Math.floor(Math.random() * spolgloski.length)] 
+            if(curtype != type){curtype = type; streak = 1}
+            return to_return
+         }
+         let word = ""
+         while(word.length < length) {
+            streak++
+            if("hjqvwxz".includes(word[word.length-1])) word += random(0)
+            else if((streak < 3 && length > 2) || streak == 1) word += (Math.random() < 1/3)? random(0) : random(1)
+            else word += random(1 - curtype)
+         }
+         //console.log(word)
+         return word.toUpperCase()
+      }
       function send_attacks(sender, amount){
          if(amount > 4){
             send_attacks(sender, Math.floor(amount/2))
@@ -573,7 +679,7 @@
             let index = tower.findIndex(player => player === sender)
             weights[index] = 0
             //weights.forEach((p, p_index) => {if(Math.abs(sender.altitude - tower[p_index].altitude) > 15){weights[p_index] *= Math.max(0.1, 1/Math.pow(1.013, Math.abs(sender.altitude - tower[p_index].altitude)-15))}})
-            weights.forEach((p, p_index) => {if(index != p_index) weights[p_index] *= 1/(Math.pow(Math.abs(index - p_index), 1.5))})
+            weights.forEach((p, p_index) => {if(index != p_index) weights[p_index] *= 1/(Math.pow(1.7, Math.abs(index - p_index) - 1))})
             let targeting_value = Math.random() * weights.reduce((sum, weight) => sum += weight, 0)
             let temp = targeting_value
             let final_index = -1
@@ -755,6 +861,26 @@
                html.append(block)
             })
             return html
+         }
+         normalize(){
+            let extremes = [0, 0, 0, 0]
+            this.tile_positions.forEach(mino => {
+               if(mino.x < extremes[0]) extremes[0] = mino.x
+               if(mino.x > extremes[1]) extremes[1] = mino.x
+               if(mino.y < extremes[2]) extremes[2] = mino.y
+               if(mino.y > extremes[3]) extremes[3] = mino.y
+            })
+            let size = new vector(extremes[1] - extremes[0] + 1, extremes[3] - extremes[2] + 1)
+            if(size.x < size.y){
+               size = new vector(size.y, size.x)
+               this.tile_positions = this.tile_positions.map(vect => vect.rot_90().add(0, size.y - 1))
+            }
+            if(size.x % 2 == 1) {
+               this.center_is_in_a_middle_of_a_tile = true
+               if(size.y % 2 == 0) this.tile_positions = this.tile_positions.map(vect => vect.add(0,1))
+            }
+            //console.log(this)
+            this.tile_positions = this.tile_positions.map(vect => vect.add(Math.ceil(size.x / -2), Math.ceil(size.y / -2)))
          }
       }
       class ruleset {
@@ -1154,7 +1280,7 @@
             this.altitude += delta * this.climb_speed * 0.25 * this.ruleset.altitude_mult * this.ruleset.passive_altitude_gain * (this.ruleset.floor_barriers? Math.min(Math.pow((Math.max(0, this.ruleset.floor_tresholds[this.floor+1] - this.altitude - 1)) / 6, 0.75), 1) : 1)
             if(temp_alt < this.ruleset.floor_tresholds[this.floor+1] - 1 && this.ruleset.floor_barriers && this.altitude > this.ruleset.floor_tresholds[this.floor+1] - 1) this.altitude = this.ruleset.floor_tresholds[this.floor+1] - 1
             if(this.bonus_altitude > 0){
-               let alt_moved = Math.min(this.bonus_altitude, Math.pow(0.92, 1/(delta + 0.01)) * Math.max(this.bonus_altitude, 0.1))
+               let alt_moved = Math.min(this.bonus_altitude, Math.pow(0.915, 1/(delta + 0.01)) * Math.max(this.bonus_altitude, 0.1), 600 * delta)
                this.bonus_altitude -= alt_moved
                this.altitude += alt_moved
             }
@@ -1997,8 +2123,8 @@
             if(this.board > 21) death(this)
             //if(this.board < 6) this.board += Math.cbrt(this.apm) / 10
             this.prepared_apm += this.apm / 120
-            if(this.prepared_apm >= 1 && Math.random() < 0.04 + 0.03 * this.skill_score) this.create_attacks(1)
-            else if(this.prepared_apm >= 2 && Math.random() < 0.03 + 0.04 * this.skill_score) this.create_attacks(2)
+            if(this.prepared_apm >= 1 && Math.random() < 0.05 + 0.03 * this.skill_score) this.create_attacks(1)
+            else if(this.prepared_apm >= 2 && Math.random() < 0.04 + 0.04 * this.skill_score) this.create_attacks(2)
             else if(this.prepared_apm >= 4 && Math.random() < 0.7 / (Math.pow(2*this.skill_score - 0.5, 2) + 1.8) - 0.15) this.create_attacks(4)
             else if(this.prepared_apm >= 5 && Math.random() < 0.5 / (Math.pow(2*this.skill_score - 1.4, 2) + 1.3) - 0.25) this.create_attacks(5)
             else if(this.prepared_apm >= 6 && Math.random() < 1.008 - Math.pow(this.skill_score, 0.05)) this.create_attacks(this.prepared_apm)
@@ -2056,7 +2182,7 @@
          }
          constructor(skill){
             this.skill_score = skill
-            this.apm = 70 * Math.pow(skill, 15) + Math.pow(skill, 4) * 70 + skill * 40 + Math.cbrt(skill) * 15 + 7
+            this.apm = 40 * Math.pow(skill, 15) + Math.pow(skill, 4) * 80 + skill * 40 + Math.cbrt(skill) * 15 + 7
             this.dss = 1.5 * Math.pow(skill, 1) + 0.4 * Math.sqrt(skill) + 0.05
             this.update_timer = window.setInterval(() => {this.update()}, 500)
          }
@@ -2555,6 +2681,7 @@
                let this_mod = mods[16]
                this_mod.dimensions = 4
                if(recipient.mods.includes(26)) this_mod.dimensions = 5
+               if(recipient.mods.includes(27)) this_mod.dimensions = 6
                this_mod.line_counter = 0
                recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
                recipient.recalculate_board_dimensions() 
@@ -2583,6 +2710,7 @@
                let this_mod = mods[17]
                this_mod.dimensions = 4
                if(recipient.mods.includes(26)) this_mod.dimensions = 5
+               if(recipient.mods.includes(27)) this_mod.dimensions = 6
                this_mod.line_counter = 0
                recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
                recipient.recalculate_board_dimensions()
@@ -2823,6 +2951,7 @@
             start: {effect: (recipient, input) => {
                recipient.ruleset.board_dimensions.x = 4
                if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
+               if(recipient.mods.includes(27)) recipient.ruleset.board_dimensions.x = 6
                recipient.recalculate_board_dimensions()
             }, priority: 0}
          },
@@ -2834,6 +2963,7 @@
                recipient.enable_hard_mode()
                recipient.ruleset.board_dimensions.x = 4
                if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
+               if(recipient.mods.includes(27)) recipient.ruleset.board_dimensions.x = 6
                recipient.recalculate_board_dimensions()
             }, priority: 0},
             placed: {effect: (recipient, input) => {
@@ -2860,28 +2990,90 @@
          {
             name: "pentos",
             start: {effect: (recipient, input) => {
-               recipient.ruleset.available_pieces = [
-                  new piece("V",[new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(1,0),new vector(1,1)],2,true,kick_tables.ASCdx),
-                  new piece("N",[new vector(-2,0),new vector(-1,0),new vector(-1,-1),new vector(0,-1),new vector(1,-1)],2,false,kick_tables.ASCdx),
-                  new piece("X",[new vector(0,1),new vector(0,0),new vector(-1,0),new vector(0,-1),new vector(1,0)],4,true,kick_tables.ASCdx),
-                  new piece("K",[new vector(0,1),new vector(0,0),new vector(-1,0),new vector(0,-1),new vector(1,-1)],5,true,kick_tables.ASCdx),
-                  new piece("I",[new vector(-2,0),new vector(-1,0),new vector(1,0),new vector(0,0),new vector(2,0)],1,true,kick_tables.ASCdx),
-                  new piece("S",[new vector(0,0),new vector(-1,-1),new vector(0,-1),new vector(0,1),new vector(1,1)],5,true,kick_tables.ASCdx),
-                  new piece("Z",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(1,-1),new vector(-1,1)],7,true,kick_tables.ASCdx),
-                  new piece("F",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(-1,-1),new vector(1,0)],6,true,kick_tables.ASCdx),
-                  new piece("T",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(-1,-1),new vector(1,-1)],6,true,kick_tables.ASCdx),
-                  new piece("L",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(1,0)],3,false,kick_tables.ASCdx),
-                  new piece("J",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(-2,0)],2,false,kick_tables.ASCdx),
-                  new piece("W",[new vector(-1,-1),new vector(0,-1),new vector(0,0),new vector(1,0),new vector(1,1)],6,true,kick_tables.ASCdx),
-                  new piece("H",[new vector(-1,-1),new vector(0,-1),new vector(0,0),new vector(1,0),new vector(-2,-1)],4,false,kick_tables.ASCdx),
-                  new piece("B",[new vector(0,0),new vector(1,0),new vector(-1,0),new vector(1,1),new vector(0,1)],5,true,kick_tables.ASCdx),
-                  new piece("Y",[new vector(0,0),new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1)],3,false,kick_tables.ASCdx),
-                  new piece("R",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(-1,0)],1,false,kick_tables.ASCdx),
-                  new piece("U",[new vector(-1,0),new vector(-1,1),new vector(0,0),new vector(1,0),new vector(1,1)],7,true,kick_tables.ASCdx),
-                  new piece("P",[new vector(-1,0),new vector(-1,1),new vector(0,0),new vector(1,0),new vector(0,1)],3,true,kick_tables.ASCdx),
-               ]
-               recipient.ruleset.bag = ["V","N","X","K","I","S","Z","F","T","L","J","W","H","B","Y","R","U","P"]
+               const names = ["I","L","R","Y","J","B","U","V","P","T","N","K","W","Z","S","F","H","X"]
+               recipient.ruleset.available_pieces = generate_polyominoes(5).map((polyomino, index) => new piece(names[index], polyomino, index % 7 + 1, false, kick_tables.ASCdx))
+               recipient.ruleset.available_pieces.forEach(piece => piece.normalize())
+               //console.log(recipient.ruleset.available_pieces)
+               recipient.ruleset.bag = names
                recipient.ruleset.cancelling_sickness_gain_mult = 0
+            }, priority: 0}
+         },
+         {
+            name: "a fool's errand",
+            start: {effect: (recipient, input) => {
+               const names = ["sirius","canopus","rigil","arcturus","vega","capella","rigel","procyon","achernar","betelgeuse","hadar","altair","acrux","aldebaran","antares","spica","pollux","formalhaut","deneb","mimosa","centauri","regulus","adhara","castor","shaula","gacrux","bellatrix","elnath","miaplacidus","alnilam","alnair","alnitak","alioth","dubhe","mirfak","wezen","regor","sargas","kaus","alkaid","avior","menkalinan","atria","alhena","peacock","alsephina","polaris","mirzam","alphard","hamal","diphda","mizar","mirach","nunki","menkent","alpheratz","rasalhague","algieba","kochab","saiph"]
+               recipient.ruleset.available_pieces = generate_polyominoes(6).map((polyomino, index) => new piece(names[index], polyomino, index % 7 + 1, false, kick_tables.ASCdx))
+               recipient.ruleset.available_pieces.forEach(piece => piece.normalize())
+               //console.log(recipient.ruleset.available_pieces)
+               recipient.ruleset.bag = names
+               recipient.ruleset.cancelling_sickness_gain_mult = 0
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+            }, priority: 0}
+         },
+         {
+            name: "polyominoes",
+            odds: [700, 1000, 1500, 3900, 1900, 750, 150, 65, 25],
+            start: {effect: (recipient, input) => {
+               recipient.ruleset.cancelling_sickness_gain_mult = 0
+            }, priority: 1},
+            piece_created: {effect: (recipient, input) => {
+               let lottery_score = Math.random() * 10000
+               //console.log(lottery_score)
+               let size = 0
+               while(lottery_score > 0 && size < 10){
+                  lottery_score -= mods[28].odds[size]
+                  size++
+               }
+               if(recipient.mods.includes(26)) size = Math.min(size + 1, 10)
+               if(recipient.mods.includes(27)) size = Math.min(size + 2, 10)
+               let num = Math.floor(Math.random() * (polyomino_amounts[size] ?? 7))
+               input.new_piece = new piece(generate_word(size), generate_polyominoes(size, recipient.current_board_dimensions.x, num), num % 7 + 1, false, kick_tables.ASCdx)
+               input.new_piece.normalize()
+               return input
+            }, priority: 2},
+            placed: {effect: (recipient, input) => {
+               input.attacks *= Math.max(1, recipient.controlled_piece.tile_positions.length / 4)
+               return input
+            }, priority: 0}
+         },
+         {
+            name: "fractured pieces",
+            odds: [900, 1450, 2500, 3500, 1200, 300, 100, 35, 10],
+            start: {effect: (recipient, input) => {
+               recipient.ruleset.cancelling_sickness_gain_mult = 0
+               recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+               recipient.enable_hard_mode()
+            }, priority: 1},
+            piece_created: {effect: (recipient, input) => {
+               let lottery_score = Math.random() * 10000
+               //console.log(lottery_score)
+               let size = 0
+               while(lottery_score > 0 && size < 10){
+                  lottery_score -= mods[29].odds[size]
+                  size++
+               }
+               if(recipient.mods.includes(26)) size = Math.min(size + 1, 10)
+               if(recipient.mods.includes(27)) size = Math.min(size + 2, 10)
+               //console.log(size)
+               let main_size = size
+               size += recipient.floor / 2
+               if(Math.random() < size % 1) size++
+               size = Math.floor(size)
+               let num = Math.floor(Math.random() * (polyomino_amounts[size] ?? 7))
+               input.new_piece = new piece(generate_word(size), generate_polyominoes(size, recipient.current_board_dimensions.x, num), num % 7 + 1, false, kick_tables.ASCdx)
+               input.new_piece.normalize()
+               while(input.new_piece.tile_positions.length > main_size){
+                  let index = Math.floor(Math.random() * input.new_piece.tile_positions.length)
+                  input.new_piece.tile_positions.splice(index, 1)
+                  input.new_piece.tile_type.splice(index, 1)
+                  input.new_piece.name = input.new_piece.name.slice(0, index) + "#" + input.new_piece.name.slice(index+1)
+               }
+               return input
+            }, priority: 2},
+            placed: {effect: (recipient, input) => {
+               input.attacks *= 1 + recipient.controlled_piece.tile_positions.length / 4
+               return input
             }, priority: 0}
          },
          {
@@ -2915,7 +3107,7 @@
          {normal: 6, reversed: 7, state: "normal", selected: false},{normal: 8, reversed: 9, state: "normal", selected: false},{normal: 10, reversed: 11, state: "normal", selected: false},
          {normal: 12, reversed: 13, state: "normal", selected: false},{normal: 14, reversed: 15, state: "normal", selected: false},{normal: 16, reversed: 17, state: "normal", selected: false},
          {normal: 18, reversed: 19, state: "normal", selected: false},{normal: 20, reversed: 21, state: "normal", selected: false},{normal: 22, reversed: 23, state: "normal", selected: false},
-         {normal: 24, reversed: 25, state: "normal", selected: false},{normal: 26, reversed: 26, state: "normal", selected: false}
+         {normal: 24, reversed: 25, state: "normal", selected: false},{normal: 26, reversed: 27, state: "normal", selected: false},{normal: 28, reversed: 29, state: "normal", selected: false}
       ]
       function rerender_mods(){
          $("#available-mods,#selected-mods").empty()

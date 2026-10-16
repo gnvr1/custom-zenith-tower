@@ -468,6 +468,7 @@ let mods = [
          let this_mod = mods[16]
          this_mod.dimensions = 4
          if(recipient.mods.includes(26)) this_mod.dimensions = 5
+         if(recipient.mods.includes(27)) this_mod.dimensions = 6
          this_mod.line_counter = 0
          recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
          recipient.recalculate_board_dimensions() 
@@ -496,6 +497,7 @@ let mods = [
          let this_mod = mods[17]
          this_mod.dimensions = 4
          if(recipient.mods.includes(26)) this_mod.dimensions = 5
+         if(recipient.mods.includes(27)) this_mod.dimensions = 6
          this_mod.line_counter = 0
          recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
          recipient.recalculate_board_dimensions()
@@ -736,6 +738,7 @@ let mods = [
       start: {effect: (recipient, input) => {
          recipient.ruleset.board_dimensions.x = 4
          if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
+         if(recipient.mods.includes(27)) recipient.ruleset.board_dimensions.x = 6
          recipient.recalculate_board_dimensions()
       }, priority: 0}
    },
@@ -747,6 +750,7 @@ let mods = [
          recipient.enable_hard_mode()
          recipient.ruleset.board_dimensions.x = 4
          if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
+         if(recipient.mods.includes(27)) recipient.ruleset.board_dimensions.x = 6
          recipient.recalculate_board_dimensions()
       }, priority: 0},
       placed: {effect: (recipient, input) => {
@@ -773,28 +777,85 @@ let mods = [
    {
       name: "pentos",
       start: {effect: (recipient, input) => {
-         recipient.ruleset.available_pieces = [
-            new piece("V",[new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(1,0),new vector(1,1)],2,true,kick_tables.ASCdx),
-            new piece("N",[new vector(-2,0),new vector(-1,0),new vector(-1,-1),new vector(0,-1),new vector(1,-1)],2,false,kick_tables.ASCdx),
-            new piece("X",[new vector(0,1),new vector(0,0),new vector(-1,0),new vector(0,-1),new vector(1,0)],4,true,kick_tables.ASCdx),
-            new piece("K",[new vector(0,1),new vector(0,0),new vector(-1,0),new vector(0,-1),new vector(1,-1)],5,true,kick_tables.ASCdx),
-            new piece("I",[new vector(-2,0),new vector(-1,0),new vector(1,0),new vector(0,0),new vector(2,0)],1,true,kick_tables.ASCdx),
-            new piece("S",[new vector(0,0),new vector(-1,-1),new vector(0,-1),new vector(0,1),new vector(1,1)],5,true,kick_tables.ASCdx),
-            new piece("Z",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(1,-1),new vector(-1,1)],7,true,kick_tables.ASCdx),
-            new piece("F",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(-1,-1),new vector(1,0)],6,true,kick_tables.ASCdx),
-            new piece("T",[new vector(0,0),new vector(0,-1),new vector(0,1),new vector(-1,-1),new vector(1,-1)],6,true,kick_tables.ASCdx),
-            new piece("L",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(1,0)],3,false,kick_tables.ASCdx),
-            new piece("J",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(-2,0)],2,false,kick_tables.ASCdx),
-            new piece("W",[new vector(-1,-1),new vector(0,-1),new vector(0,0),new vector(1,0),new vector(1,1)],6,true,kick_tables.ASCdx),
-            new piece("H",[new vector(-1,-1),new vector(0,-1),new vector(0,0),new vector(1,0),new vector(-2,-1)],4,false,kick_tables.ASCdx),
-            new piece("B",[new vector(0,0),new vector(1,0),new vector(-1,0),new vector(1,1),new vector(0,1)],5,true,kick_tables.ASCdx),
-            new piece("Y",[new vector(0,0),new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1)],3,false,kick_tables.ASCdx),
-            new piece("R",[new vector(-2,-1),new vector(-1,-1),new vector(0,-1),new vector(1,-1),new vector(-1,0)],1,false,kick_tables.ASCdx),
-            new piece("U",[new vector(-1,0),new vector(-1,1),new vector(0,0),new vector(1,0),new vector(1,1)],7,true,kick_tables.ASCdx),
-            new piece("P",[new vector(-1,0),new vector(-1,1),new vector(0,0),new vector(1,0),new vector(0,1)],3,true,kick_tables.ASCdx),
-         ]
-         recipient.ruleset.bag = ["V","N","X","K","I","S","Z","F","T","L","J","W","H","B","Y","R","U","P"]
+         const names = ["I","L","R","Y","J","B","U","V","P","T","N","K","W","Z","S","F","H","X"]
+         recipient.ruleset.available_pieces = generate_polyominoes(5).map((polyomino, index) => new piece(names[index], polyomino, index % 7 + 1, false, kick_tables.ASCdx))
+         recipient.ruleset.available_pieces.forEach(piece => piece.normalize())
+         recipient.ruleset.bag = names
          recipient.ruleset.cancelling_sickness_gain_mult = 0
+      }, priority: 0}
+   },
+   {
+      name: "a fool's errand",
+      start: {effect: (recipient, input) => {
+         const names = ["sirius","canopus","rigil","arcturus","vega","capella","rigel","procyon","achernar","betelgeuse","hadar","altair","acrux","aldebaran","antares","spica","pollux","formalhaut","deneb","mimosa","centauri","regulus","adhara","castor","shaula","gacrux","bellatrix","elnath","miaplacidus","alnilam","alnair","alnitak","alioth","dubhe","mirfak","wezen","regor","sargas","kaus","alkaid","avior","menkalinan","atria","alhena","peacock","alsephina","polaris","mirzam","alphard","hamal","diphda","mizar","mirach","nunki","menkent","alpheratz","rasalhague","algieba","kochab","saiph"]
+         recipient.ruleset.available_pieces = generate_polyominoes(6).map((polyomino, index) => new piece(names[index], polyomino, index % 7 + 1, false, kick_tables.ASCdx))
+         recipient.ruleset.available_pieces.forEach(piece => piece.normalize())
+         recipient.ruleset.bag = names
+         recipient.ruleset.cancelling_sickness_gain_mult = 0
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+      }, priority: 0}
+   },
+   {
+      name: "polyominoes",
+      odds: [700, 1000, 1500, 3900, 1900, 750, 150, 65, 25],
+      start: {effect: (recipient, input) => {
+         recipient.ruleset.cancelling_sickness_gain_mult = 0
+      }, priority: 1},
+      piece_created: {effect: (recipient, input) => {
+         let lottery_score = Math.random() * 10000
+         let size = 0
+         while(lottery_score > 0 && size < 10){
+            lottery_score -= mods[28].odds[size]
+            size++
+         }
+         if(recipient.mods.includes(26)) size = Math.min(size + 1, 10)
+         if(recipient.mods.includes(27)) size = Math.min(size + 2, 10)
+         let num = Math.floor(Math.random() * (polyomino_amounts[size] ?? 7))
+         input.new_piece = new piece(generate_word(size), generate_polyominoes(size, recipient.current_board_dimensions.x, num), num % 7 + 1, false, kick_tables.ASCdx)
+         input.new_piece.normalize()
+         return input
+      }, priority: 2},
+      placed: {effect: (recipient, input) => {
+         input.attacks *= Math.max(1, recipient.controlled_piece.tile_positions.length / 4)
+         return input
+      }, priority: 0}
+   },
+   {
+      name: "fractured pieces",
+      odds: [900, 1450, 2500, 3500, 1200, 300, 100, 35, 10],
+      start: {effect: (recipient, input) => {
+         recipient.ruleset.cancelling_sickness_gain_mult = 0
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+      }, priority: 1},
+      piece_created: {effect: (recipient, input) => {
+         let lottery_score = Math.random() * 10000
+         let size = 0
+         while(lottery_score > 0 && size < 10){
+            lottery_score -= mods[29].odds[size]
+            size++
+         }
+         if(recipient.mods.includes(26)) size = Math.min(size + 1, 10)
+         if(recipient.mods.includes(27)) size = Math.min(size + 2, 10)
+         let main_size = size
+         size += recipient.floor / 2
+         if(Math.random() < size % 1) size++
+         size = Math.floor(size)
+         let num = Math.floor(Math.random() * (polyomino_amounts[size] ?? 7))
+         input.new_piece = new piece(generate_word(size), generate_polyominoes(size, recipient.current_board_dimensions.x, num), num % 7 + 1, false, kick_tables.ASCdx)
+         input.new_piece.normalize()
+         while(input.new_piece.tile_positions.length > main_size){
+            let index = Math.floor(Math.random() * input.new_piece.tile_positions.length)
+            input.new_piece.tile_positions.splice(index, 1)
+            input.new_piece.tile_type.splice(index, 1)
+            input.new_piece.name = input.new_piece.name.slice(0, index) + "#" + input.new_piece.name.slice(index+1)
+         }
+         return input
+      }, priority: 2},
+      placed: {effect: (recipient, input) => {
+         input.attacks *= 1 + recipient.controlled_piece.tile_positions.length / 4
+         return input
       }, priority: 0}
    },
    {

@@ -64,4 +64,24 @@ class piece {
       })
       return html
    }
+   normalize(){
+      let extremes = [0, 0, 0, 0]
+      this.tile_positions.forEach(mino => {
+         if(mino.x < extremes[0]) extremes[0] = mino.x
+         if(mino.x > extremes[1]) extremes[1] = mino.x
+         if(mino.y < extremes[2]) extremes[2] = mino.y
+         if(mino.y > extremes[3]) extremes[3] = mino.y
+      })
+      let size = new vector(extremes[1] - extremes[0] + 1, extremes[3] - extremes[2] + 1)
+      if(size.x < size.y){
+         size = new vector(size.y, size.x)
+         this.tile_positions = this.tile_positions.map(vect => vect.rot_90().add(0, size.y - 1))
+      }
+      if(size.x % 2 == 1) {
+         this.center_is_in_a_middle_of_a_tile = true
+         if(size.y % 2 == 0) this.tile_positions = this.tile_positions.map(vect => vect.add(0,1))
+      }
+      //console.log(this)
+      this.tile_positions = this.tile_positions.map(vect => vect.add(Math.ceil(size.x / -2), Math.ceil(size.y / -2)))
+   }
 }
