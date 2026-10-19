@@ -82,7 +82,7 @@ const settings = {
    }
 }
 let edited_control = undefined
-const piece_colors = ["cyan","blue","orange","yellow","lime","magenta","red"]
+const piece_colors = ["cyan","blue","orange","yellow","lime","magenta","red","green"]
 const climb_speed_colours = ["black","firebrick","orange","lime","cornflowerblue","magenta","lightsalmon","palegreen","cyan","pink"]
 function tag(x=undefined,y=undefined){
    if(x === undefined) return $("<div>")
@@ -198,7 +198,7 @@ function generate_word(length) {
    let word = ""
    while(word.length < length) {
       streak++
-      if("hjqvwxz".includes(word[word.length-1])) word += random(0)
+      if("hjqvwz".includes(word[word.length-1])) word += random(0)
       else if((streak < 3 && length > 2) || streak == 1) word += (Math.random() < 1/3)? random(0) : random(1)
       else word += random(1 - curtype)
    }

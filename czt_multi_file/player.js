@@ -14,7 +14,7 @@ class player {
       garbage_entering_time: 0.08333,
       instant_garbage_entry: false,
       garbage_cap: 8,
-      absolute_garbage_cap: undefined,
+      absolute_garbage_cap: -1,
       garbage_favour: 30,
       garbage_favour_per_floor: -3,
       garbage_gathering: true,
@@ -74,7 +74,7 @@ class player {
          new piece("S",[new vector(-1,0),new vector(0,0),new vector(0,1),new vector(1,1)],5),
          new piece("T",[new vector(-1,0),new vector(0,0),new vector(0,1),new vector(1,0)],6, true, kick_tables.SRSp, {spin: [0,2,4,6,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50]},"weirdplus"),
          new piece("Z",[new vector(-1,1),new vector(0,1),new vector(0,0),new vector(1,0)],7),
-         new piece("I5",[new vector(-2,0),new vector(-1,0),new vector(0,0),new vector(1,0),new vector(2,0)],1,true,kick_tables.SRSpI),
+         new piece("SICKNESS",[new vector(-2,0),new vector(-1,0),new vector(0,0),new vector(1,0),new vector(2,0)],1,true,kick_tables.SRSpI),
       ],
       bag: ["I","J","L","O","S","T","Z"],
       bag_refresh_at: 0,
@@ -193,7 +193,7 @@ class player {
    total_lines_cleared = 0
    all_clears = 0
    recalculate_board_dimensions(){
-      let target_board_dimensions = new vector(Math.max(4, this.ruleset.board_dimensions.x * this.ruleset.board_dimension_mults.x), Math.max(4, this.ruleset.board_dimensions.y * this.ruleset.board_dimension_mults.y))
+      let target_board_dimensions = new vector(Math.max(4, Math.ceil(this.ruleset.board_dimensions.x * this.ruleset.board_dimension_mults.x)), Math.max(4, Math.ceil(this.ruleset.board_dimensions.y * this.ruleset.board_dimension_mults.y)))
       while(this.current_board_dimensions.x != target_board_dimensions.x){
          if(this.current_board_dimensions.x < target_board_dimensions.x){
             if(this.current_board_dimensions.x % 2 == 0){
@@ -347,9 +347,9 @@ class player {
          for(let i = 0; i < this.ruleset.queue_size; i++) queue_display.append(this.queue[i].rendered_tag())
       }
       else queue_display = tag(3,3)
-      let mod_names = tag().css("margin",5).addClass("column").css("text-align","left").css("align-items","flex-start").css("white-space","nowrap")
+      let mod_names = tag().css("margin",5).addClass("column").css("text-align","left").css("align-items","flex-start").css("white-space","nowrap").css("max-height",5)
       this.mods.forEach(mod => {
-         let name = tag().html(mods[mod].name.toUpperCase()).attr("id","mod-"+mod+"-name").css("color","white").css("display","block")
+         let name = tag().html(mods[mod].name.toUpperCase()).attr("id","mod-"+mod+"-name").css("color","white").css("display","block").css("font-size", Math.min(16, 192/this.mods.length))
          mod_names.append(name)
       })
       right.append(queue_display, mod_names)
@@ -463,6 +463,11 @@ class player {
       if(this.top_text.length > 0 && Date.now() - this.last_top_text_update - this.top_text[0].time * 1000 > 500){
          this.top_text.shift()
          this.last_top_text_update = Date.now()
+      }
+
+      while(this.ruleset.absolute_garbage_cap >= 0 && this.garbage_queue.reduce((sum, chunk) => sum += chunk.size, 0) > this.ruleset.absolute_garbage_cap){
+         this.garbage_queue[this.garbage_queue.length-1].size -= 1
+         this.garbage_queue = this.garbage_queue.filter(chunk => chunk.size > 0)
       }
 
       let keys_just_pressed = [...keys_pressed].filter(key => !(this.last_update_keys_pressed.includes(key)))
@@ -716,11 +721,12 @@ class player {
                if(this.cancelling_sickness >= this.ruleset.cancelling_sickness_tresholds.lj) extra_bag.push((Math.random() < 0.5)? "L" : "J")
                if(this.cancelling_sickness >= this.ruleset.cancelling_sickness_tresholds.lj2) extra_bag.push((Math.random() < 0.5)? "L" : "J")
                extra_bag.sort(() => 0.5 - Math.random())
-               this.bag = this.bag.concat(extra_bag)
+               let result = this.execute_mod_functions("new_bag",{bag: extra_bag})
+               this.bag = this.bag.concat(result.bag)
             }
          }
          if(this.cancelling_sickness > this.ruleset.cancelling_sickness_tresholds.i5 && !this.cancelling_sickness_i5_received) {
-            this.queue.push(this.get_piece("I5"))
+            this.queue.push(this.get_piece("SICKNESS"))
             this.cancelling_sickness_i5_received = true
          }
       }
@@ -772,7 +778,7 @@ class player {
          this.garbage_lines_cleared += garbage_cleared
          this.clutch = true
          this.combo += 1
-         if(this.controlled_piece.name == "I5" && this.ruleset.cancelling_sickness_downgrade_pentas_from_special_piece && lines_cleared > 4) lines_cleared--
+         if(this.controlled_piece.name == "SICKNESS" && this.ruleset.cancelling_sickness_downgrade_pentas_from_special_piece && lines_cleared > 4) lines_cleared--
          this.action_text = (this.piece_spinnin == 1? "mini ":"") + (this.piece_spinnin? this.controlled_piece.name + "-SPIN ":"") + clear_names[Math.min(lines_cleared-1, 19)].toUpperCase("")
          this.last_action_text_update = Date.now()
          if(this.piece_spinnin == 2){

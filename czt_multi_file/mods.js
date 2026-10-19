@@ -1,3 +1,15 @@
+let mutated_pieces = [
+   [[[-2,0],[-1,0],[0,0],[1,0],[2,0]],true],[[[0,0],[1,0],[-1,1]],true],[[[0,0],[1,0],[-1,0]],true],[[[-1,0],[0,-1]],false],[[[-1,0],[-1,-1],[0,0]],false],[[[-1,0],[0,1],[1,0]],true],[[[0,0]],true],
+   [[[0,0],[-1,0],[-2,0],[2,0]],true],[[[-2,-1],[-1,-1],[0,-1],[1,-1],[-2,0]],false],[[[-2,-1],[-1,-1],[0,-1],[1,-1],[1,0]],false],[[[-1,1],[-1,0],[1,1],[1,0]],true],[[[-2,-1],[-1,-1],[0,0],[1,0]],false],[[[-2,-1],[-1,-1],[0,0],[0,-1],[1,-1]],false],[[[0,-1],[1,-1],[-2,0],[-1,0]],false],
+   [[[0,-1],[1,-1],[-2,0],[-1,0],[-1,-1],[-2,-1],[0,0],[1,0]],false],[[[0,-1],[-1,0],[0,0],[1,0],[-1,1]],true],[[[0,-1],[1,0],[-2,-1],[1,-1]],false],[[[0,-1],[1,0],[1,-1],[-1,-1],[-1,0],[0,0],[0,1],[-1,1],[1,1]],true],[[[-2,0],[-1,0],[0,0],[1,0],[-1,1],[0,1],[1,1],[2,1]],true],[[[0,0],[0,1],[0,-1],[-1,-1],[1,-1]],true],[[[0,0],[0,1],[1,0],[2,0],[-1,0],[-1,1],[-2,1],[1,1]],true],
+   [[[-1,0],[-2,-1],[0,-1],[1,-1]],false],[[[-1,0],[0,-1],[1,-1],[-1,1]],true],[[[0,-1],[1,-1],[-1,-1],[1,1],[1,0]],true],[[[1,0],[0,0],[-1,0],[0,1],[-1,1]],true],[[[1,0],[0,0],[-1,0],[-1,-1],[-2,-1]],false],[[[1,0],[0,0],[-1,0],[-1,-1],[0,1],[1,-1]],true],[[[0,0],[-1,0],[1,-1],[-2,0],[0,-1]],false],
+   [[[0,0],[-1,0],[-2,0],[1,0],[2,1]],true],[[[-1,0],[0,-1],[1,-1],[0,1]],true],[[[-1,0],[-1,1],[0,0],[1,0],[1,1]],true],[[[-1,0],[0,0],[1,0],[-1,-1],[0,-1],[1,-1],[0,1]],true],[[[0,0],[-1,-1],[0,-1],[0,1],[1,1]],true],[[[0,0],[0,1],[-1,0],[1,0],[2,0],[-2,0]],true],[[[0,0],[0,1],[-1,1],[0,-1],[1,-1]],true],
+   [[[0,-1],[1,-1],[-1,-1],[-2,-1],[0,1],[1,1],[-1,1],[-2,1]],false],[[[0,-1],[1,-1],[-1,-1],[-2,-1],[1,0],[-1,0]],false],[[[0,-1],[1,-1],[-1,-1],[-2,-1],[0,0],[-2,0]],false],[[[0,-1],[1,0],[0,1],[-1,0]],true],[[[0,1],[-1,0],[-1,-1],[0,0],[1,1]],true],[[[0,1],[-1,0],[-1,-1],[0,0],[-2,-1],[-2,0],[1,0]],false],[[[0,0],[-2,0],[0,-1],[1,-1]],false],
+   [[[0,-1],[-2,-1],[-1,0],[1,0]],false],[[[0,-1],[-2,-1],[1,0],[-1,-1],[1,-1],[-2,0]],false],[[[0,-1],[1,0],[-2,0],[0,0],[-1,0],[1,1]],false],[[[0,-1],[-1,0],[-1,-1],[0,0],[0,1],[1,-1],[-1,-2],[-2,0]],false],[[[0,-1],[-1,0],[-1,-1],[0,0],[0,1],[-1,1],[-2,-1],[1,1]],false],[[[-1,0],[-1,-1],[0,0],[0,1],[-2,-1],[1,0],[1,-1],[2,-1]],true],[[[-1,0],[-1,-1],[0,0],[0,1],[1,-1],[0,-1],[-2,1],[-1,1]],false],
+   [[[-1,0],[0,0],[1,-1],[-2,1],[1,0],[-2,0],[-2,-1],[1,1]],false],[[[-1,0],[1,0],[-2,0],[-2,1],[0,1],[2,0]],true],[[[-1,0],[1,0],[-2,0],[0,1],[2,0],[2,1]],true],[[[-1,0],[1,0],[0,-1],[-1,-1],[-1,1],[1,1],[1,2],[0,2]],true],[[[0,1],[-1,1],[-1,0],[0,-1],[0,-2],[-1,-2]],false],[[[0,-1],[-1,-1],[-1,1],[1,1],[0,2],[0,0],[1,-1],[0,1],[0,-2]],true],[[[0,1],[-1,1],[0,-2],[-1,-2],[-1,-1],[0,0]],false],
+   [[[-1,1],[-3,3],[1,-1],[3,-3]],true],[[[-1,1],[1,0],[-1,0],[0,0],[3,0],[-3,1]],true],[[[1,0],[-1,0],[0,0],[-3,0],[1,1],[3,1]],true],[[[-1,0],[0,0],[-1,-1],[0,-1],[-1,2],[0,-3]],false],[[[-1,0],[0,0],[0,1],[1,1],[-3,0],[3,1]],true],[[[-1,0],[0,0],[0,1],[1,0],[0,-2],[0,3]],true],[[[0,0],[0,1],[1,0],[-1,1],[-3,1],[3,0]],true],
+   [[[0,0],[0,1],[1,0],[-1,1],[-1,0],[2,0],[3,1],[1,1],[-2,1],[-3,0]],true],[[[-3,-1],[-1,-1],[-2,-1],[0,-1],[1,-1],[2,-1],[-3,0],[-2,1],[2,0]],false],[[[-3,-1],[-1,-1],[-2,-1],[0,-1],[1,-1],[2,-1],[-3,0],[2,0],[1,1]],false],[[[1,-1],[2,-1],[2,0],[1,1],[1,0],[1,-2],[-2,0],[-2,-1],[-3,0],[-3,-1],[-2,1],[-1,1],[0,1],[-2,-2],[-1,-2],[0,-2],[-1,-3],[0,-3],[-1,2],[0,2]],false],[[[1,1],[1,-2],[-2,1],[-1,1],[-2,-2],[0,-2],[-1,-3],[0,-3],[-1,2],[0,2],[0,-1],[-1,0]],false],[[[1,-2],[0,-2],[-1,2],[0,2],[0,-1],[-1,-2],[1,2],[0,1],[0,0],[-2,2],[-2,1],[2,2],[2,1]],true],[[[-1,-1],[-1,-2],[-2,-2],[-1,-3],[0,0],[0,1],[0,2],[1,1],[-2,1],[-1,2],[0,-3],[1,-2]],false],
+]
 let mods = [
    {
       name: "no hold",
@@ -467,7 +479,7 @@ let mods = [
       start: {effect: (recipient, input) => {
          let this_mod = mods[16]
          this_mod.dimensions = 4
-         if(recipient.mods.includes(26)) this_mod.dimensions = 5
+         if(recipient.mods.includes(26) || recipient.mods.includes(30) || recipient.mods.includes(31)) this_mod.dimensions = 5
          if(recipient.mods.includes(27)) this_mod.dimensions = 6
          this_mod.line_counter = 0
          recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
@@ -496,7 +508,7 @@ let mods = [
       start: {effect: (recipient, input) => {
          let this_mod = mods[17]
          this_mod.dimensions = 4
-         if(recipient.mods.includes(26)) this_mod.dimensions = 5
+         if(recipient.mods.includes(26) || recipient.mods.includes(30) || recipient.mods.includes(31)) this_mod.dimensions = 5
          if(recipient.mods.includes(27)) this_mod.dimensions = 6
          this_mod.line_counter = 0
          recipient.ruleset.board_dimensions = new vector(this_mod.dimensions,this_mod.dimensions)
@@ -737,9 +749,13 @@ let mods = [
       name: "4-wide",
       start: {effect: (recipient, input) => {
          recipient.ruleset.board_dimensions.x = 4
-         if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
+         if(recipient.mods.includes(26) || recipient.mods.includes(30) || recipient.mods.includes(31)) recipient.ruleset.board_dimensions.x = 5
          if(recipient.mods.includes(27)) recipient.ruleset.board_dimensions.x = 6
          recipient.recalculate_board_dimensions()
+         recipient.ruleset.available_pieces = recipient.ruleset.available_pieces.map(the_piece => {
+            if(the_piece.name == "SICKNESS") return new piece("SICKNESS",[new vector(-1,0),new vector(0,1),new vector(0,-1),new vector(0,0),new vector(1,0)],1,true,kick_tables.ASCdx)
+            else return the_piece
+         })
       }, priority: 0}
    },
    {
@@ -749,9 +765,13 @@ let mods = [
          recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
          recipient.enable_hard_mode()
          recipient.ruleset.board_dimensions.x = 4
-         if(recipient.mods.includes(26)) recipient.ruleset.board_dimensions.x = 5
+         if(recipient.mods.includes(26) || recipient.mods.includes(30) || recipient.mods.includes(31)) recipient.ruleset.board_dimensions.x = 5
          if(recipient.mods.includes(27)) recipient.ruleset.board_dimensions.x = 6
          recipient.recalculate_board_dimensions()
+         recipient.ruleset.available_pieces = recipient.ruleset.available_pieces.map(the_piece => {
+            if(the_piece.name == "SICKNESS") return new piece("SICKNESS",[new vector(-1,0),new vector(0,1),new vector(0,-1),new vector(0,0),new vector(1,0)],1,true,kick_tables.ASCdx)
+            else return the_piece
+         })
       }, priority: 0},
       placed: {effect: (recipient, input) => {
          let this_mod = mods[25]
@@ -859,7 +879,141 @@ let mods = [
       }, priority: 0}
    },
    {
-      name: "danik's freefall",
+      name: "mutation",
+      pieces: 0,
+      lucky_block: -1,
+      skips: 0,
+      start: {effect: (recipient, input) => {
+         let this_mod = mods[30]
+         recipient.ruleset.cancelling_sickness_gain_mult = 0
+         recipient.ruleset.board_dimension_mults.y *= 1.2
+         recipient.recalculate_board_dimensions()
+         recipient.ruleset.garbage_cap = 2
+         this_mod.pieces = 0
+         this_mod.lucky_block = -1
+         this_mod.skips = 0
+         recipient.ruleset.absolute_garbage_cap = 8
+         let letters = "IJLOSTZ"
+         recipient.ruleset.available_pieces = recipient.ruleset.available_pieces.concat(mutated_pieces.map((data, index) => new piece(letters[index % 7] + (Math.floor(index / 7) + 1), data[0].map(pos => new vector(pos[0],pos[1])), index % 7 + 1, mutated_pieces[index][1], kick_tables.ASCdx)))
+      }, priority: 0},
+      piece_created: {effect: (recipient, input) => {
+         let this_mod = mods[30]
+         let replacement = false
+         this_mod.pieces++
+         if(this_mod.pieces == 8 || this_mod.pieces == (recipient.floor > 1? 17 : 16)){
+            if(this_mod.skips == 0) replacement = [(recipient.floor - 1), Math.floor(Math.random() * 7)]
+            else this_mod.skips--
+         }
+         else if(this_mod.pieces == this_mod.lucky_block) replacement = [(Math.floor(Math.random() * Math.min(recipient.floor - 1, 3))), Math.floor(Math.random() * 7)]
+         if(this_mod.pieces == (recipient.floor > 1? 17 : 16)){
+            this_mod.pieces = 0
+            if(recipient.floor > 1) this_mod.lucky_block = 8 + Math.floor(Math.random() * 8)
+         }
+         let letters = "IJLOSTZ"
+         if(replacement) input.new_piece = recipient.get_piece(letters[replacement[1]] + (replacement[0] + 1))
+         if(recipient.floor >= 9 && (mods.includes(24) || mods.includes(25)) && recipient.ruleset.board_dimensions.x < 7) {recipient.ruleset.board_dimensions.x = 7; recipient.recalculate_board_dimensions()}
+         return input
+      new piece()
+      }, priority: 1},
+      floor: {effect: (recipient, input) => {
+         let this_mod = mods[30]
+         this_mod.pieces -= 7
+         if(this_mod.pieces >= 0){
+            this_mod.lucky_block = 8 + Math.floor(Math.random() * 8)
+            this_mod.skips++
+         }
+         if(this_mod.pieces >= 8) this_mod.lucky_block = -1
+      }, priority: 0}
+   },
+   {
+      name: "empowerment",
+      pieces: 0,
+      xp: 0,
+      level: 0,
+      lucky_block: -1,
+      fallback_odds: 0,
+      fallback_rank: 1,
+      secondary_range: [0,3],
+      start: {effect: (recipient, input) => {
+         let this_mod = mods[31]
+         recipient.ruleset.cancelling_sickness_gain_mult = 0
+         recipient.ruleset.board_dimension_mults.y *= 1.2
+         recipient.recalculate_board_dimensions()
+         recipient.ruleset.garbage_cap = 2
+         this_mod.pieces = 0
+         this_mod.xp = 0
+         this_mod.level = 0
+         this_mod.lucky_block = 9 + Math.floor(Math.random() * 8)
+         this_mod.fallback_odds = 0
+         this_mod.fallback_rank = 1
+         this_mod.secondary_range = [0,3]
+         recipient.ruleset.absolute_garbage_cap = 8
+         recipient.ruleset.garbage_entry_delay = [2.5,2.5,2.5,2.5,2.5,2.5,2,1.5,1,0.5]
+         recipient.enable_hard_mode()
+         let letters = "IJLOSTZ"
+         recipient.ruleset.available_pieces = recipient.ruleset.available_pieces.concat(mutated_pieces.map((data, index) => new piece(letters[index % 7] + (Math.floor(index / 7) + 1), data[0].map(pos => new vector(pos[0],pos[1])), index % 7 + 1, mutated_pieces[index][1], kick_tables.ASCdx)))
+      }, priority: 0},
+      piece_created: {effect: (recipient, input) => {
+         let this_mod = mods[31]
+         let replacement = false
+         this_mod.pieces++
+         if(this_mod.pieces == 8 || this_mod.pieces == 17){
+            replacement = [(recipient.floor - 1), Math.floor(Math.random() * 7), true]
+         }
+         else if(this_mod.pieces == this_mod.lucky_block) replacement = [this_mod.secondary_range[0] + (Math.floor(Math.random() * (this_mod.secondary_range[1] - this_mod.secondary_range[0]))), Math.floor(Math.random() * 7), true]
+         else if(Math.random() < this_mod.fallback_odds) replacement = [this_mod.fallback_rank - 1, Math.floor(Math.random() * 7),false]
+         if(this_mod.pieces == 17){
+            this_mod.pieces = 0
+            this_mod.lucky_block = 9 + Math.floor(Math.random() * 8) 
+         }
+         let letters = "IJLOSTZ"
+         if(replacement){
+            input.new_piece = recipient.get_piece(letters[replacement[1]] + (replacement[0] + 1))
+            if(replacement[2]){
+               input.new_piece.tile_type = []
+               input.new_piece.tile_positions.forEach(cell => input.new_piece.tile_type.push(new tile(1,8)))
+            }  
+         }
+         if((recipient.floor >= 9 || this_mod.level >= 12) && (mods.includes(24) || mods.includes(25)) && recipient.ruleset.board_dimensions.x < 7) {recipient.ruleset.board_dimensions.x = 7; recipient.recalculate_board_dimensions()}
+         return input
+      new piece()
+      }, priority: 1},
+      piece_spawn: {effect: (recipient, input) => {
+         let this_mod = mods[31]
+         if(input.piece === undefined){
+            recipient.board.forEach(row => row.forEach(cell => {if(cell.type == 1 && cell.subtype == 8) this_mod.xp++}))
+            if(this_mod.xp > 25 + 27 * this_mod.level + 3 * Math.pow(this_mod.level, 2)){
+               this_mod.xp -= 25 + 27 * this_mod.level + 3 * Math.pow(this_mod.level, 2)
+               this_mod.level++
+               recipient.add_top_text("LEVEL UP! x1.07 ALTITUDE GAIN, YOUR PIECES GET MORE UPGRADED", 4)
+               recipient.ruleset.altitude_mult *= 1.07
+               if(this_mod.level == 1) this_mod.fallback_odds = 0.15
+               if(this_mod.level == 2) this_mod.fallback_rank = 2
+               if(this_mod.level == 3) this_mod.fallback_rank = 3
+               if(this_mod.level == 4) this_mod.fallback_odds = 0.2
+               if(this_mod.level == 5) this_mod.fallback_rank = 4
+               if(this_mod.level == 6) this_mod.fallback_rank = 5
+               if(this_mod.level == 7) this_mod.secondary_range = [2,5]
+               if(this_mod.level == 8) this_mod.fallback_rank = 6
+               if(this_mod.level == 9) this_mod.fallback_odds = 0.25
+               if(this_mod.level == 10) this_mod.fallback_rank = 7
+               if(this_mod.level == 11) this_mod.fallback_rank = 8
+               if(this_mod.level == 12) this_mod.fallback_rank = 9
+               if(this_mod.level == 13) this_mod.secondary_range = [4,8]
+               if(this_mod.level == 14) this_mod.fallback_rank = 10
+               if(this_mod.level >= 15) this_mod.fallback_odds += 0.05
+            }
+         }
+         return input
+      }, priority: 1},
+      render: {effect: (recipient, input) => {
+         let this_mod = mods[31]
+         $("#mod-31-name").html("EMPOWERMENT: LEVEL " + this_mod.level + " - " + this_mod.xp + "/" + (25 + 27 * this_mod.level + 3 * Math.pow(this_mod.level, 2)))
+         return input
+      }, priority: 0}
+   },
+   {
+      name: "d's freefall",
       height: 0,
       target_gravity: 1200,
       start: {effect: (recipient, input) => {

@@ -27,8 +27,8 @@ class fake_player {
       if(this.board > 21) death(this)
       //if(this.board < 6) this.board += Math.cbrt(this.apm) / 10
       this.prepared_apm += this.apm / 120
-      if(this.prepared_apm >= 1 && Math.random() < 0.05 + 0.03 * this.skill_score) this.create_attacks(1)
-      else if(this.prepared_apm >= 2 && Math.random() < 0.04 + 0.04 * this.skill_score) this.create_attacks(2)
+      if(this.prepared_apm >= 1 && Math.random() < 0.05 + 0.07 * this.skill_score) this.create_attacks(1)
+      else if(this.prepared_apm >= 2 && Math.random() < 0.04 + 0.1 * this.skill_score) this.create_attacks(2)
       else if(this.prepared_apm >= 4 && Math.random() < 0.7 / (Math.pow(2*this.skill_score - 0.5, 2) + 1.8) - 0.15) this.create_attacks(4)
       else if(this.prepared_apm >= 5 && Math.random() < 0.5 / (Math.pow(2*this.skill_score - 1.4, 2) + 1.3) - 0.25) this.create_attacks(5)
       else if(this.prepared_apm >= 6 && Math.random() < 1.008 - Math.pow(this.skill_score, 0.05)) this.create_attacks(this.prepared_apm)
